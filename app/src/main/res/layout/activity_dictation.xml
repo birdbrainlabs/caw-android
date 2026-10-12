@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Caw's main screen (DictationActivity): transcript or shortcuts, Copy / Clear, status, Crumb, computer.
+<!-- Caw's main screen (DictationActivity): computer / settings, transcript or shortcuts, Copy / Clear, status, Crumb, key row.
      No ScrollView around Crumb: a scrolling parent would take a moving finger and end the hold. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -12,6 +12,27 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:orientation="horizontal">
+
+            <!-- The paired computer and its connection; opens Send to computer (ComputerActivity). -->
+            <TextView
+                android:id="@+id/computer_row"
+                style="@style/CawButton"
+                android:layout_width="0dp"
+                android:layout_weight="1" />
+
+            <!-- Opens Settings (SettingsActivity): the computer's word fixes and pointer, natural scrolling. -->
+            <TextView
+                android:id="@+id/settings"
+                style="@style/CawButton"
+                android:layout_marginStart="8dp"
+                android:text="@string/dictation_settings" />
+        </LinearLayout>
 
         <ScrollView
             android:id="@+id/transcript_scroll"
@@ -35,7 +56,7 @@
         </ScrollView>
 
         <!-- Send to computer on: the transcript gives way to the last text sent and the computer's
-             key row and shortcut buttons (rows of R.integer.shortcut_columns, added at runtime). -->
+             shortcut buttons (rows of R.integer.shortcut_columns, added at runtime). -->
         <LinearLayout
             android:id="@+id/shortcut_panel"
             android:layout_width="match_parent"
@@ -55,9 +76,6 @@
                 android:paddingEnd="4dp"
                 android:textColor="@color/caw_text"
                 android:textSize="14sp" />
-
-            <!-- ← ↑ ↓ → Backspace Enter, fixed above the scrolling grid. -->
-            <include layout="@layout/dictation_key_row" />
 
             <ScrollView
                 android:id="@+id/shortcut_scroll"
@@ -147,25 +165,11 @@
                 android:visibility="gone" />
         </FrameLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal">
 
-            <!-- The paired computer and its connection; opens Send to computer (ComputerActivity). -->
-            <TextView
-                android:id="@+id/computer_row"
-                style="@style/CawButton"
-                android:layout_width="0dp"
-                android:layout_weight="1" />
-
-            <!-- Opens Settings (SettingsActivity): the computer's word fixes and pointer, natural scrolling. -->
-            <TextView
-                android:id="@+id/settings"
-                style="@style/CawButton"
-                android:layout_marginStart="8dp"
-                android:text="@string/dictation_settings" />
-        </LinearLayout>
+        <!-- ← ↑ ↓ → Backspace Enter, directly under Crumb; shown with the shortcut panel (Send to computer on). -->
+        <include
+            android:id="@+id/key_row"
+            layout="@layout/dictation_key_row"
+            android:visibility="gone" />
     </LinearLayout>
 </FrameLayout>

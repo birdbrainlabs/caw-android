@@ -56,6 +56,7 @@ class DictationActivity : Activity(), DictationScreen.View, RemoteLink.Observer 
     private lateinit var computerRow: TextView
     private lateinit var touchpadButton: View
     private lateinit var shortcutPanel: View
+    private lateinit var keyRow: View
     private lateinit var sentLine: TextView
     private lateinit var shortcutScroll: View
     private lateinit var shortcutGrid: LinearLayout
@@ -85,6 +86,7 @@ class DictationActivity : Activity(), DictationScreen.View, RemoteLink.Observer 
         computerRow = findViewById(R.id.computer_row)
         touchpadButton = findViewById(R.id.touchpad)
         shortcutPanel = findViewById(R.id.shortcut_panel)
+        keyRow = findViewById(R.id.key_row)
         sentLine = findViewById(R.id.sent_line)
         shortcutScroll = findViewById(R.id.shortcut_scroll)
         shortcutGrid = findViewById(R.id.shortcut_grid)
@@ -268,6 +270,7 @@ class DictationActivity : Activity(), DictationScreen.View, RemoteLink.Observer 
         copyButton.visibility = transcriptShown
         clearButton.visibility = transcriptShown
         shortcutPanel.visibility = if (sending) View.VISIBLE else View.GONE
+        keyRow.visibility = if (sending) View.VISIBLE else View.GONE
         val list = state.shortcuts
         // null: the computer's Caw Desktop has no shortcuts (or Caw has not heard yet): no grid, no hint.
         shortcutScroll.visibility = if (list.isNullOrEmpty()) View.GONE else View.VISIBLE

@@ -41,7 +41,7 @@
             </ScrollView>
 
             <!-- Send to computer on: the transcript gives way to the last text sent and the computer's
-                 key row and shortcut buttons (rows of R.integer.shortcut_columns, added at runtime). -->
+                 shortcut buttons (rows of R.integer.shortcut_columns, added at runtime). -->
             <LinearLayout
                 android:id="@+id/shortcut_panel"
                 android:layout_width="match_parent"
@@ -61,9 +61,6 @@
                     android:paddingEnd="4dp"
                     android:textColor="@color/caw_text"
                     android:textSize="14sp" />
-
-                <!-- ← ↑ ↓ → Backspace Enter, fixed above the scrolling grid. -->
-                <include layout="@layout/dictation_key_row" />
 
                 <ScrollView
                     android:id="@+id/shortcut_scroll"
@@ -137,6 +134,12 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/computer_row"
+                style="@style/CawButton"
+                android:layout_width="match_parent"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
                 android:id="@+id/status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -164,11 +167,11 @@
                     android:visibility="gone" />
             </FrameLayout>
 
-            <TextView
-                android:id="@+id/computer_row"
-                style="@style/CawButton"
-                android:layout_width="match_parent"
-                android:layout_marginTop="4dp" />
+            <!-- ← ↑ ↓ → Backspace Enter, directly under Crumb; shown with the shortcut panel (Send to computer on). -->
+            <include
+                android:id="@+id/key_row"
+                layout="@layout/dictation_key_row"
+                android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>
