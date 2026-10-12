@@ -7,7 +7,7 @@ import java.util.Base64
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-/** The pairing code (docs/remote-protocol.md "Pairing"): 16 Crockford base32 characters. */
+/** The pairing code (caw-desktop's PROTOCOL.md "Pairing"): 16 Crockford base32 characters. */
 object PairingCode {
     const val LENGTH = 16
     private const val CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -66,7 +66,7 @@ data class PairTarget(val host: String, val port: Int, val code: String, val nam
     }
 }
 
-/** Fingerprints and pairing proofs (docs/remote-protocol.md "Identities" and "Pairing"). */
+/** Fingerprints and pairing proofs (caw-desktop's PROTOCOL.md "Identities" and "Pairing"). */
 object PairProof {
     val PHONE_LABEL = "caw-pair-phone".toByteArray(Charsets.UTF_8)
     val DESKTOP_LABEL = "caw-pair-desktop".toByteArray(Charsets.UTF_8)

@@ -2,7 +2,7 @@ package com.caw.android.remote
 
 /**
  * Which addresses to try, in what order, when connecting to the paired computer
- * (docs/remote-protocol.md "Reconnecting"). Plain strings, no java.net, so it is unit tested.
+ * (see RemoteLink). Plain strings, no java.net, so it is unit tested.
  *
  * After a short Wi-Fi drop NsdManager sometimes resolves the computer to its IPv6 link-local
  * address only (`fe80::…%wlan0`). Caw used to store that and retry only it. Now every attempt

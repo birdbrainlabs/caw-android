@@ -4,7 +4,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 
-/** Caw Remote Protocol messages (docs/remote-protocol.md). Each is one JSON object per line. */
+/** Caw Remote Protocol messages (caw-desktop's PROTOCOL.md). Each is one JSON object per line. */
 object Protocol {
     /** `hello` says v3 (v2 touchpad messages, v3 settings); the desktop accepts v1, v2 and v3. */
     const val VERSION = 3

@@ -7,7 +7,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 data class WordFixDocument(val version: Int, val about: String?, val fixes: List<WordFix>)
 
-/** Reads and writes the word-fixes.json format (docs/port-spec.md 1.1 and 1.5). */
+/** Reads and writes the word-fixes.json format. */
 object WordFixJson {
     const val DEFAULT_ABOUT = "Word fixes: when the recognizer writes \"from\", your text says \"to\". " +
         "Applied in order. Edit them in Settings › Words & Learning."
@@ -57,7 +57,7 @@ object WordFixJson {
  * (never over an existing file). The file is re-checked at most every 0.5 s and reloaded when it changed.
  *
  * @param readSeed returns the bundled seed JSON: assets/word-fixes.personal.json when the build
- *   bundled one (the owner's own list, from outside the repo, docs/BUILD.md "Your own word list"),
+ *   bundled one (the owner's own list, from outside the repo, README, "Word fixes"),
  *   else assets/word-fixes.json (see [seedAsset]).
  * @param post runs listener callbacks on the main thread.
  */

@@ -2,7 +2,7 @@ package com.caw.android.session
 
 enum class StatusKind { READY, INFO, WARNING }
 
-/** Status words from docs/port-spec.md 3.3. Only the ready text is reworded (no Fn key on a phone). */
+/** Status words, as in Caw for Mac. Only the ready text is reworded (no Fn key on a phone). */
 data class Status(val text: String, val kind: StatusKind) {
     companion object {
         val READY = Status("Ready — hold to talk", StatusKind.READY)
@@ -22,7 +22,7 @@ data class Status(val text: String, val kind: StatusKind) {
 
         fun startFailed(error: String) = Status("Could not start transcription: $error", StatusKind.WARNING)
 
-        // "Send to computer" (docs/remote-protocol.md). These stand in for READY while the mode is on.
+        // "Send to computer" (caw-desktop's PROTOCOL.md). These stand in for READY while the mode is on.
 
         /** Connected: what is said goes to [computer]. */
         fun sendingTo(computer: String) = Status("Sending to $computer — hold to talk", StatusKind.READY)

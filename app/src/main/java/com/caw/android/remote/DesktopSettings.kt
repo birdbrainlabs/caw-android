@@ -3,7 +3,7 @@ package com.caw.android.remote
 import java.util.Locale
 
 /**
- * The computer's settings (protocol v3, docs/remote-protocol.md "v3: settings"), as its `settings`
+ * The computer's settings (protocol v3, caw-desktop's PROTOCOL.md "v3: settings"), as its `settings`
  * reply carries them. They live on the computer, so they follow whichever computer is paired.
  */
 data class DesktopSettings(

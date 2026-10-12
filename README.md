@@ -22,9 +22,10 @@ repeated sounds are expected, not treated as mistakes, and a hold can last up to
   [HeliBoard](https://github.com/Helium314/HeliBoard), tap the mic key, hold
   Crumb, let go: the text goes into the text box and Caw switches back to
   HeliBoard.
-- **Send to computer.** Paired with a computer running Caw Desktop (Linux, a
-  separate program that is not part of this repo), Caw can type your
-  dictation on the computer instead, with Backspace and Enter buttons.
+- **Send to computer.** Paired with a computer running
+  [Caw Desktop](https://github.com/birdbrainlabs/caw-desktop) (Linux or
+  Windows, a separate download), Caw can type your dictation on the computer
+  instead, with Backspace and Enter buttons.
   Pairing is by QR code or a typed code; the connection is TLS 1.3 on your
   local network, with both sides pinned by certificate fingerprint.
 - **Touchpad.** The phone can move the paired computer's mouse: one finger

@@ -5,7 +5,7 @@ fun interface Clock {
 }
 
 /**
- * One hold-to-talk recording, timed as in docs/port-spec.md section 3.
+ * One hold-to-talk recording, timed as in Caw for Mac.
  * Pure Kotlin. Call everything from one thread, and call [tick] about every 50 ms while [isActive].
  *
  * press -> LISTENING -> release -> TAIL (mic keeps running 400 ms) -> FINISHING (mic stopped,

@@ -3,7 +3,7 @@ package com.caw.android.ui
 import kotlin.math.roundToInt
 
 /**
- * What Crumb is told (docs/crumb-spec.md section 3). Pure Kotlin so the exact string can be tested.
+ * What Crumb is told. Pure Kotlin so the exact string can be tested.
  * [level] is kept to two decimals so tiny mic changes do not count as a change.
  */
 data class CrumbPayload(

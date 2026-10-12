@@ -26,7 +26,7 @@ import androidx.webkit.WebViewAssetLoader
 import java.io.ByteArrayInputStream
 
 /**
- * Crumb, the 3D mascot, as the hold-to-talk orb (docs/crumb-spec.md). A transparent WebView shows
+ * Crumb, the 3D mascot, as the hold-to-talk orb. A transparent WebView shows
  * `assets/crumb/index.html`; this view takes every touch itself (the WebView never sees one) and
  * reports press/release through [onHold].
  *

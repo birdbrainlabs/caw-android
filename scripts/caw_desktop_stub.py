@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test desktop for Caw's "Send to computer" (docs/remote-protocol.md, Caw Remote Protocol v1 and v2).
+"""Test desktop for Caw's "Send to computer" (Caw Remote Protocol v1 and v2, PROTOCOL.md in the caw-desktop repo).
 
 Stands in for the real Caw Desktop (a Rust app written elsewhere) so the phone side can be tested.
 Standard library only. It does not type anything: it prints what the phone sends and answers.
@@ -103,7 +103,7 @@ def short_id(fp):
     return fp[:16].hex()
 
 
-# ---- pairing code and proofs (docs/remote-protocol.md "Pairing") ----
+# ---- pairing code and proofs (PROTOCOL.md "Pairing") ----
 
 def normalize_code(code):
     return code.upper().replace("-", "").replace(" ", "").replace("O", "0").replace("I", "1").replace("L", "1")

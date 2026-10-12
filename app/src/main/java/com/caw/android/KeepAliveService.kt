@@ -15,7 +15,7 @@ import android.util.Log
  * Keeps Caw's process (and the speech model loaded in it) alive while other apps are in front.
  * Without it Samsung's memory manager kills the hidden process and the next hold waits for the
  * model to load again. It does nothing but stay in the foreground with a quiet "Caw is ready"
- * notification (docs/BUILD.md section 5). Started by [CawInputMethodService] on its first show
+ * notification. Started by [CawInputMethodService] on its first show
  * and by [DictationActivity] when it starts.
  */
 class KeepAliveService : Service() {

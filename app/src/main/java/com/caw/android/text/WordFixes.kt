@@ -14,7 +14,7 @@ enum class Capitalization(val key: String) {
     }
 }
 
-/** One user word fix (docs/port-spec.md section 1). [from] and [endings] are regex source. */
+/** One user word fix. [from] and [endings] are regex source. */
 data class WordFix(
     val from: String,
     val to: String,

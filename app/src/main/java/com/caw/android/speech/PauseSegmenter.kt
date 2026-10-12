@@ -5,7 +5,7 @@ package com.caw.android.speech
  * each finished segment while the hold goes on. Pure Kotlin; works on 100 ms chunks and their RMS.
  * The caller keeps the audio itself, in a queue parallel to this one, and applies each [Step].
  *
- * Rules (docs/port-spec.md section 5):
+ * Rules:
  * - A chunk is quiet when its RMS is below max([FLOOR], [RELATIVE] x the average RMS of the loud
  *   chunks in this segment so far); otherwise it is loud.
  * - Speech = the stretch from the segment's first loud chunk to its last loud chunk. Once that is at

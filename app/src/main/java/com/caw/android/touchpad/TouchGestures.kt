@@ -3,7 +3,7 @@ package com.caw.android.touchpad
 import kotlin.math.hypot
 
 /**
- * The touchpad screen's gestures (docs/BUILD.md section 11), turned into mouse actions:
+ * The touchpad screen's gestures, turned into mouse actions:
  *
  * - one finger moving: the mouse moves by the finger's movement in dp (px / density, raw; the
  *   desktop applies acceleration);

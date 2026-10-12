@@ -33,7 +33,7 @@ import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509TrustManager
 
 /**
- * "Send to computer": the connection to the paired Caw Desktop (docs/remote-protocol.md).
+ * "Send to computer": the connection to the paired Caw Desktop (caw-desktop's PROTOCOL.md).
  * One per process, shared by the input method and [com.caw.android.ComputerActivity].
  *
  * Threads: everything that touches the socket or [RemoteSession] runs on the "CawRemote" thread;

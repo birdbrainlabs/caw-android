@@ -21,7 +21,7 @@ import com.caw.android.settings.SettingsModel
 import com.caw.android.settings.SettingsModel.ComputerLine
 
 /**
- * Settings (docs/BUILD.md section 12), opened from the dictation screen. The word fixes and the
+ * Settings, opened from the dictation screen. The word fixes and the
  * pointer's speed and acceleration live on the paired computer (protocol v3 `settings_get` /
  * `settings_set`), so they follow whichever computer is paired; natural scrolling is kept on the
  * phone. While this is open Caw stays connected to the computer; nothing here is queued: a change

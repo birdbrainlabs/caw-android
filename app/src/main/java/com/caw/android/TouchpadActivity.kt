@@ -28,7 +28,7 @@ import com.caw.android.ui.CrumbHost
 import com.caw.android.ui.CrumbView
 
 /**
- * The paired computer's touchpad (docs/BUILD.md section 11), opened from the dictation screen's
+ * The paired computer's touchpad, opened from the dictation screen's
  * Touchpad button. The touch area's fingers go through [TouchGestures] (which knows nothing of
  * Android) and out as v2 `pointer_move` / `click` / `scroll` messages, fire-and-forget. Crumb
  * under it is the same hold-to-talk as everywhere (the shared [Dictation]); the finished text goes

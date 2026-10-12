@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Send to computer (docs/remote-protocol.md): TLS socket to Caw Desktop on the Wi-Fi,
+    <!-- Send to computer (caw-desktop's PROTOCOL.md): TLS socket to Caw Desktop on the Wi-Fi,
          reconnect when the network comes back, QR scan for pairing. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />

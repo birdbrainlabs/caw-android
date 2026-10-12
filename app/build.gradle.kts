@@ -49,7 +49,7 @@ android {
     }
 
     // The owner's own word list (word-fixes.personal.json) is bundled from outside the repo when that
-    // folder exists, so it never goes into git (docs/BUILD.md "Your own word list"). -Pcaw.public leaves it
+    // folder exists, so it never goes into git (README, "Word fixes"). -Pcaw.public leaves it
     // out, for APKs other people download.
     val personalAssets = file("${System.getProperty("user.home")}/.config/caw-android/assets")
     val publicBuild = providers.gradleProperty("caw.public").isPresent
@@ -67,7 +67,7 @@ dependencies {
     // sherpa-onnx (k2-fsa). NOT CERTAIN this coordinate is on Maven Central: k2-fsa documents
     // the Android AAR mainly as a GitHub release asset (sherpa-onnx-<version>.aar). If Gradle
     // cannot resolve com.k2-fsa:sherpa-onnx, put the release AAR at app/libs/sherpa-onnx.aar
-    // (see docs/BUILD.md) and this block uses it instead. The Kotlin API used is
+    // (README, "Build and run") and this block uses it instead. The Kotlin API used is
     // com.k2fsa.sherpa.onnx.OnlineRecognizer, which ships inside that AAR.
     val localSherpa = file("libs/sherpa-onnx.aar")
     if (localSherpa.exists()) {

@@ -2,7 +2,7 @@ package com.caw.android.text
 
 import java.text.Normalizer
 
-/** Each switch turns one step of the cleaner on or off (docs/port-spec.md 2.1). All default on. */
+/** Each switch turns one step of the cleaner on or off. All default on. */
 data class CleanerSwitches(
     val spellsOutSmallOrdinals: Boolean = true,
     val removesStutterFragments: Boolean = true,

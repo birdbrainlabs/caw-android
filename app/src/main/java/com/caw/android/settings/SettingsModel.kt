@@ -6,7 +6,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * The Settings screen's logic without Android (docs/BUILD.md section 12): which computer line to
+ * The Settings screen's logic without Android: which computer line to
  * show, when the editors are usable, word-fix list edits, and the sliders' steps. The texts are in
  * res/values/strings.xml; [SettingsActivity][com.caw.android.SettingsActivity] maps [ComputerLine] to them.
  */
