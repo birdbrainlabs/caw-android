@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- DictationActivity on its side: transcript on the left, the hold column on the right.
+     Same ids as layout/activity_dictation.xml. No ScrollView around Crumb (it would end a hold). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/caw_backdrop"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <ScrollView
+                android:id="@+id/transcript_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@drawable/transcript_background"
+                android:fillViewport="true"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/transcript"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/dictation_hint"
+                    android:lineSpacingExtra="4dp"
+                    android:textColor="@color/caw_text"
+                    android:textColorHint="#80F2F4F7"
+                    android:textIsSelectable="true"
+                    android:textSize="18sp" />
+            </ScrollView>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="end"
+                android:orientation="horizontal">
+
+                <!-- Opens the paired computer's touchpad (TouchpadActivity); dimmed while none is paired. -->
+                <TextView
+                    android:id="@+id/touchpad"
+                    style="@style/CawButton"
+                    android:text="@string/dictation_touchpad" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/copy"
+                    style="@style/CawButton"
+                    android:text="@string/dictation_copy" />
+
+                <TextView
+                    android:id="@+id/clear"
+                    style="@style/CawButton"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/dictation_clear" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="260dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="12dp"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:drawablePadding="8dp"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:maxLines="3"
+                android:minHeight="48dp"
+                android:textColor="@color/caw_text"
+                android:textSize="14sp" />
+
+            <FrameLayout
+                android:id="@+id/crumb_slot"
+                android:layout_width="150dp"
+                android:layout_height="150dp">
+
+                <ProgressBar
+                    android:id="@+id/spinner"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:indeterminateTint="@android:color/white"
+                    android:visibility="gone" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:id="@+id/remote_keys"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/remote_backspace"
+                    style="@style/CawButton"
+                    android:text="@string/backspace_button" />
+
+                <TextView
+                    android:id="@+id/remote_enter"
+                    style="@style/CawButton"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/enter_button" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/computer_row"
+                style="@style/CawButton"
+                android:layout_width="match_parent"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

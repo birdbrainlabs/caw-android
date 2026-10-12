@@ -1,0 +1,30 @@
+{
+  "version" : 1,
+  "about" : "Word fixes: when the recognizer writes \"from\", your text says \"to\". Applied in this order, after sentence capitalisation. \"from\" ignores case; separate alternatives with |, write phrases with their spaces. It is a regular expression, so mark(?='s) fixes \"Mark's\" but not \"marks\". capitalization: always (proper noun), matchHeard (capital only if the heard word had one), exact (written exactly as \"to\"). Optional: wholeWord (default true), endings (default 's|s, kept in lower case after the fix). Save the file and the next dictation uses it.",
+  "fixes" : [
+    {
+      "capitalization" : "matchHeard",
+      "from" : "colonel",
+      "to" : "kernel",
+      "note" : "Sample entry: replace these with your own."
+    },
+    {
+      "capitalization" : "always",
+      "from" : "pear tree",
+      "to" : "Peartree",
+      "note" : "Sample: a name written as one word."
+    },
+    {
+      "capitalization" : "exact",
+      "from" : "git hub",
+      "to" : "GitHub",
+      "note" : "Sample: always written exactly like this."
+    },
+    {
+      "capitalization" : "exact",
+      "from" : "sequel",
+      "to" : "SQL",
+      "note" : "Sample: an acronym."
+    }
+  ]
+}

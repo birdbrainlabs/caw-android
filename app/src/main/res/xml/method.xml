@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One voice subtype: keyboards such as HeliBoard list voice-mode IMEs on their mic key.
+     isAuxiliary is left off on purpose so Caw also shows in the keyboard picker. -->
+<input-method xmlns:android="http://schemas.android.com/apk/res/android">
+    <subtype
+        android:imeSubtypeLocale="en_US"
+        android:imeSubtypeMode="voice"
+        android:overridesImplicitlyEnabledSubtype="true"
+        android:label="@string/subtype_label" />
+</input-method>

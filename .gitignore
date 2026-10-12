@@ -1,0 +1,28 @@
+.DS_Store
+._*
+
+# Gradle / Android
+.gradle/
+.kotlin/
+build/
+local.properties
+captures/
+.cxx/
+.externalNativeBuild/
+*.apk
+*.aab
+
+# Android Studio
+.idea/
+*.iml
+
+# Big downloads (scripts/fetch-model.sh, optional local sherpa-onnx AAR)
+app/src/main/assets/models/
+# (covers models/sherpa-streaming-en/ and models/moonshine-base-en/)
+app/src/main/assets/models/moonshine-base-en/
+app/libs/*.aar
+
+# scripts/caw_desktop_stub.py keeps its key, certificate, trusted phones and QR next to itself
+scripts/caw_desktop_stub.*.pem
+scripts/caw_desktop_stub.trusted.json
+scripts/caw_desktop_stub.qr.png

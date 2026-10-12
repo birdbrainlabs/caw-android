@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Mac app's colours -->
+    <color name="caw_tint">#E9694F</color>
+    <color name="caw_blue">#3B82F6</color>
+    <color name="caw_disc">#2D3038</color>
+    <color name="caw_pill_border">#29FFFFFF</color>
+    <color name="caw_backdrop">#15171C</color>
+    <color name="caw_text">#F2F4F7</color>
+</resources>

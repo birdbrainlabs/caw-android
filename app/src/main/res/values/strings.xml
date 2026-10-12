@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Caw</string>
+    <string name="ime_name">Caw</string>
+    <string name="subtype_label">Caw voice</string>
+    <string name="keyboard_button">Keyboard</string>
+    <string name="backspace_button">Backspace</string>
+    <string name="enter_button">Enter</string>
+    <string name="orb_idle">Hold to talk.</string>
+    <string name="orb_listening">Listening. Let go to stop recording.</string>
+    <string name="orb_finishing">Finishing the transcript.</string>
+    <string name="orb_holding">Your words are waiting. Tap into a text box and they will go in.</string>
+    <!-- Same text as Status.LOADING_MODEL (session/Status.kt). -->
+    <string name="status_loading_model">Loading speech model…</string>
+
+    <!-- Dictation screen (DictationActivity), Caw's main screen -->
+    <string name="dictation_hint">Hold Crumb and talk. What you say appears here.</string>
+    <string name="dictation_copy">Copy</string>
+    <string name="dictation_clear">Clear</string>
+    <string name="dictation_clip_label">Caw transcript</string>
+    <string name="dictation_computer_none">Computer: not paired. Tap to set up.</string>
+    <string name="dictation_computer_off">Computer: %1$s. Send to computer is off.</string>
+    <string name="dictation_computer_connected">Sending to %1$s: connected</string>
+    <string name="dictation_computer_away">Sending to %1$s: not connected</string>
+    <string name="dictation_computer_waiting">Sending to %1$s: not connected, %2$d waiting</string>
+    <string name="dictation_touchpad">Touchpad</string>
+
+    <!-- Touchpad (TouchpadActivity) -->
+    <string name="touchpad_title">Touchpad</string>
+    <string name="touchpad_hint">One finger moves the mouse. Tap to click.\nTwo fingers scroll; a two-finger tap is a right click.\nPress and hold, then move, to drag.</string>
+
+    <!-- Send to computer (ComputerActivity) -->
+    <string name="computer_title">Send to computer</string>
+    <string name="computer_switch">Send to computer</string>
+    <string name="computer_switch_help">When this is on, what you dictate is typed on the paired computer. On Caw\'s own screen it is also kept in the transcript; from Caw\'s pill in another app the phone\'s text box is left alone. Both show the computer\'s name and Backspace and Enter buttons for it.</string>
+    <string name="computer_forget">Forget computer</string>
+    <string name="computer_pair_title">Pair a computer</string>
+    <string name="computer_pair_help">Start pairing on the computer (Caw Desktop). It shows a QR code and a code for two minutes.</string>
+    <string name="computer_scan">Scan QR</string>
+    <string name="computer_or_type">Or type what the computer shows:</string>
+    <string name="computer_host_hint">Computer\'s address, e.g. 10.0.0.20</string>
+    <string name="computer_port_hint">Port</string>
+    <string name="computer_code_hint">Code, e.g. ABCD-EFGH-JKMN-PQRS</string>
+    <string name="computer_pair">Pair</string>
+    <string name="computer_scan_prompt">Point at the QR code on the computer</string>
+</resources>
