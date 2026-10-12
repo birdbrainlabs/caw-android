@@ -394,7 +394,7 @@ object RemoteLink {
             Log.i(TAG, "connected to $desktopName")
             desktop?.let { findIpv4Later(it) }
             if (!wanted) {
-                // Just paired with the switch off: hello_ok proved the link; nothing to keep open.
+                // The switch went off while connecting: hello_ok proved the link; nothing to keep open.
                 closeConn("Send to computer is off")
                 connection = Connection.OFF
             }
@@ -603,11 +603,13 @@ object RemoteLink {
                     resolvedHosts = emptyList()
                     desktop = d
                     store.saveDesktop(d)
-                    enabled = store.enabled
+                    // Pairing means "send to this computer": the switch turns on (it can be turned off after).
+                    enabled = true
+                    store.enabled = true
                     problem = null
                     policy.reset()
                     Log.i(TAG, "paired with $name ($id) at $host:$port")
-                    // Same connection carries on with hello (it closes after hello_ok if the switch is off).
+                    // Same connection carries on with hello.
                     socket.soTimeout = 0
                     connection = Connection.CONNECTING
                     start(socket, framer)

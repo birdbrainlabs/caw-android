@@ -128,9 +128,9 @@ class RemoteStore(context: Context) {
         prefs.edit().remove(ID).remove(NAME).remove(FP).remove(HOST).remove(PORT).putBoolean(ENABLED, false).apply()
     }
 
-    /** The "Send to computer" switch. Off by default. */
+    /** The "Send to computer" switch. On by default; pairing turns it on again (RemoteLink.pairNow). */
     var enabled: Boolean
-        get() = prefs.getBoolean(ENABLED, false)
+        get() = prefs.getBoolean(ENABLED, true)
         set(value) {
             prefs.edit().putBoolean(ENABLED, value).apply()
         }
