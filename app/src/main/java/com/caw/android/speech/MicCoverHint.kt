@@ -7,7 +7,7 @@ import kotlin.math.PI
  * The "I can't hear you" hint. Pure Kotlin.
  *
  * A finger over the phone's bottom mic records loud rumble with almost nothing above 20 Hz, and
- * Moonshine hears no words in it. Measured on a phone (2026-10-12): covered holds had raw RMS
+ * Moonshine hears no words in it. Measured on a test phone (2026-10-12): covered holds had raw RMS
  * 0.037-0.039 with voice-band RMS ([VoiceBand], above about 150 Hz) only 0.04-0.05 of that; spoken
  * holds kept 0.76.
  * A hold that produced no text, was loud ([MIN_RMS]) and kept less than [MAX_VOICE_RATIO] of its

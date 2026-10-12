@@ -18,6 +18,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import com.caw.android.dictation.Dictation
 import com.caw.android.remote.RemoteLink
+import com.caw.android.remote.RemoteStore
 import com.caw.android.session.Status
 import com.caw.android.session.StatusKind
 import com.caw.android.speech.SpeechEngine
@@ -27,7 +28,7 @@ import com.caw.android.ui.CrumbHost
 import com.caw.android.ui.CrumbView
 
 /**
- * The paired computer's touchpad, opened from the dictation screen's
+ * The paired computer's touchpad (docs/BUILD.md section 11), opened from the dictation screen's
  * Touchpad button. The touch area's fingers go through [TouchGestures] (which knows nothing of
  * Android) and out as v2 `pointer_move` / `click` / `scroll` messages, fire-and-forget. Crumb
  * under it is the same hold-to-talk as everywhere (the shared [Dictation]); the finished text goes
@@ -90,8 +91,10 @@ class TouchpadActivity : Activity(), TouchpadScreen.View, RemoteLink.Observer {
         }
         screen.view = this
         Dictation.attach(screen)
+        // Phone-only setting (Settings screen): off = the scroll follows the fingers.
+        gestures.naturalScrolling = RemoteStore(this).naturalScrolling
         RemoteLink.addObserver(this)
-        RemoteLink.setTouchpadOpen(true)
+        RemoteLink.holdOpen(RemoteLink.SCREEN_TOUCHPAD, true)
         if (!hasMicPermission()) {
             if (!screen.askedForMic) {
                 screen.askedForMic = true
@@ -118,7 +121,7 @@ class TouchpadActivity : Activity(), TouchpadScreen.View, RemoteLink.Observer {
         Dictation.release(screen)
         Dictation.detach(screen)
         RemoteLink.removeObserver(this)
-        RemoteLink.setTouchpadOpen(false)
+        RemoteLink.holdOpen(RemoteLink.SCREEN_TOUCHPAD, false)
         if (screen.view === this) screen.view = null
         CrumbHost.detach(crumbSlot)
         crumb = null

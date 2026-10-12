@@ -118,11 +118,25 @@
                 android:text="@string/enter_button" />
         </LinearLayout>
 
-        <!-- The paired computer and its connection; opens Send to computer (ComputerActivity). -->
-        <TextView
-            android:id="@+id/computer_row"
-            style="@style/CawButton"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_marginTop="8dp" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <!-- The paired computer and its connection; opens Send to computer (ComputerActivity). -->
+            <TextView
+                android:id="@+id/computer_row"
+                style="@style/CawButton"
+                android:layout_width="0dp"
+                android:layout_weight="1" />
+
+            <!-- Opens Settings (SettingsActivity): the computer's word fixes and pointer, natural scrolling. -->
+            <TextView
+                android:id="@+id/settings"
+                style="@style/CawButton"
+                android:layout_marginStart="8dp"
+                android:text="@string/dictation_settings" />
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>

@@ -56,7 +56,7 @@ class MicCoverHintTest {
         assertEquals(stats.rms, stats.voiceRms, stats.rms * 0.1f) // 1 kHz keeps about 92 % through both passes
     }
 
-    // Synthetic stand-ins for the holds measured on a phone (MicCoverHint's comment).
+    // Synthetic stand-ins for the holds measured on a test phone (MicCoverHint's comment).
 
     /** 10 Hz plus 15 Hz, scaled so the raw RMS is about 0.038, as the measured covered holds were. */
     private fun measuredRumble(): FloatArray = sine(10.0, 0.038).plus(sine(15.0, 0.038))

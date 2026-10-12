@@ -17,7 +17,7 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * The Caw orb, as in the Mac app: blue radial gradient, cyan rim, blue glow.
+ * The Caw orb (docs/port-spec.md 4.3 and 4.4): blue radial gradient, cyan rim, blue glow.
  * A still circle when idle; a wobbling shape driven by [level] while [listening].
  */
 class OrbView @JvmOverloads constructor(

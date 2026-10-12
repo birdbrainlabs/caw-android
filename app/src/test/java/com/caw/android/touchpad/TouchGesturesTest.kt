@@ -198,4 +198,24 @@ class TouchGesturesTest {
         one(Action.UP, 70, 100f, 200f)
         assertEquals(emptyList<String>(), sent)
     }
+
+    @Test
+    fun naturalScrollingOffSendsTheFingerMovementAsItIs() {
+        g.naturalScrolling = false
+        one(Action.DOWN, 0, 400f, 1000f)
+        two(Action.POINTER_DOWN, 10, 400f, 1000f, 600f, 1000f)
+        // Both fingers move UP the screen by 105 px (40 dp): with natural scrolling off the page scrolls UP.
+        two(Action.MOVE, 30, 452.5f, 895f, 652.5f, 895f)
+        two(Action.POINTER_UP, 40, 452.5f, 895f, 652.5f, 895f)
+        assertEquals(listOf("scroll 20.0,-40.0"), sent)
+
+        // Back on: the same movement is negated.
+        sent.clear()
+        g.naturalScrolling = true
+        one(Action.DOWN, 100, 400f, 1000f)
+        two(Action.POINTER_DOWN, 110, 400f, 1000f, 600f, 1000f)
+        two(Action.MOVE, 130, 452.5f, 895f, 652.5f, 895f)
+        two(Action.POINTER_UP, 140, 452.5f, 895f, 652.5f, 895f)
+        assertEquals(listOf("scroll -20.0,40.0"), sent)
+    }
 }

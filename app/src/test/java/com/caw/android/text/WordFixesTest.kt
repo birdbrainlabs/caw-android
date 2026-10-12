@@ -11,81 +11,82 @@ class WordFixesTest {
 
     @Test
     fun alwaysCapitalises() {
-        val f = fix(WordFix("clawed|clod", "claude", Capitalization.ALWAYS))
-        assertEquals("ask Claude now", f.apply("ask clawed now"))
-        assertEquals("ask Claude's help", f.apply("ask clawed's help"))
+        val f = fix(WordFix("akme|ackme", "acme", Capitalization.ALWAYS))
+        assertEquals("ask Acme now", f.apply("ask akme now"))
+        assertEquals("ask Acme's help", f.apply("ask akme's help"))
     }
 
     @Test
     fun matchHeardFollowsTheHeardFirstLetter() {
-        val f = fix(WordFix("palate", "palette", Capitalization.MATCH_HEARD))
-        assertEquals("Palette and palette", f.apply("Palate and palate"))
+        val f = fix(WordFix("colour", "color", Capitalization.MATCH_HEARD))
+        assertEquals("Color and color", f.apply("Colour and colour"))
     }
 
     @Test
     fun exactNeverChangesCase() {
-        val f = fix(WordFix("ipod|eyepod", "iPod", Capitalization.EXACT))
-        assertEquals("iPod rocks", f.apply("Eyepod rocks"))
+        val f = fix(WordFix("teh|tha", "the", Capitalization.EXACT))
+        assertEquals("the rocks", f.apply("Teh rocks"))
     }
 
     @Test
     fun wholeWordOnlyMatchesWholeWords() {
-        val f = fix(WordFix("cn", "cyan"))
-        assertEquals("cnn and cyan", f.apply("cnn and cn"))
+        val f = fix(WordFix("teh", "the"))
+        assertEquals("tehran and the", f.apply("tehran and teh"))
     }
 
     @Test
     fun wholeWordOffMatchesInsideWords() {
         val f = fix(WordFix("hatch", "hutch", wholeWord = false))
-        assertEquals("escapehutch", f.apply("escapehatch"))
+        assertEquals("rabbithutch", f.apply("rabbithatch"))
     }
 
     @Test
     fun defaultEndingsAreKept() {
-        val f = fix(WordFix("chad", "chat"))
-        assertEquals("chats", f.apply("chads"))
-        assertEquals("Chat's", f.apply("Chad's"))
+        val f = fix(WordFix("colour", "color"))
+        assertEquals("colors", f.apply("colours"))
+        assertEquals("Color's", f.apply("Colour's"))
     }
 
     @Test
     fun endingsAreLowerCased() {
-        val f = fix(WordFix("colonel", "kernel", Capitalization.ALWAYS))
-        assertEquals("Kernels", f.apply("COLONELS"))
+        val f = fix(WordFix("akme", "acme", Capitalization.ALWAYS))
+        assertEquals("Acmes", f.apply("AKMES"))
     }
 
     @Test
     fun customEndings() {
         val f = fix(WordFix("widget", "widget", Capitalization.EXACT, endings = "s?(?:'s)?"))
         assertEquals("widgets and widget's", f.apply("Widgets and Widget's"))
-        val none = fix(WordFix("chad", "chat", endings = ""))
-        assertEquals("chads", none.apply("chads"))
+        val none = fix(WordFix("colour", "color", endings = ""))
+        assertEquals("colours", none.apply("colours"))
     }
 
     @Test
     fun lookaheadInFrom() {
-        val f = fix(WordFix("dock|doc(?='s)", "doug", Capitalization.ALWAYS))
-        assertEquals("Doug's docs and Doug", f.apply("doc's docs and dock"))
+        val f = fix(WordFix("jon|john(?='s)", "jon", Capitalization.ALWAYS))
+        assertEquals("Jon's johns and Jon", f.apply("john's johns and jon"))
     }
 
     @Test
     fun laterEntriesSeeEarlierOutput() {
-        val f = fix(WordFix("pier", "peer"), WordFix("peer's", "Peer's", Capitalization.ALWAYS))
-        assertEquals("Peer's toy", f.apply("pier's toy"))
+        val f = fix(WordFix("colour", "color"), WordFix("color's", "Color's", Capitalization.ALWAYS))
+        assertEquals("Color's toy", f.apply("colour's toy"))
     }
 
     @Test
     fun badAndBlankEntriesAreSkipped() {
-        val f = fix(WordFix("(", "x"), WordFix("  ", "y"), WordFix("chad", "chat"))
+        val f = fix(WordFix("(", "x"), WordFix("  ", "y"), WordFix("teh", "the"))
         assertEquals(listOf("("), f.invalid)
-        assertEquals("chat", f.apply("chad"))
+        assertEquals("the", f.apply("teh"))
     }
 
     @Test
-    fun seedFileLoads() {
+    fun seedFileLoadsEmpty() {
+        // The bundled seed ships empty; the user's own list lives only on the device.
         val doc = WordFixJson.parse(File("src/main/assets/word-fixes.json").readText())
         val f = WordFixes(doc.fixes)
-        assertEquals(4, doc.fixes.size)
+        assertEquals(0, doc.fixes.size)
         assertTrue(f.invalid.isEmpty())
-        assertEquals("The kernel under the Peartree is on GitHub", f.apply("The colonel under the pear tree is on git hub"))
+        assertEquals("Ask about the colour", f.apply("Ask about the colour"))
     }
 }

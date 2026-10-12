@@ -135,6 +135,16 @@ class RemoteStore(context: Context) {
             prefs.edit().putBoolean(ENABLED, value).apply()
         }
 
+    /**
+     * Natural scrolling on the touchpad (phone-only; the Settings screen's switch). On by default.
+     * Kept when the computer is forgotten.
+     */
+    var naturalScrolling: Boolean
+        get() = prefs.getBoolean(NATURAL_SCROLLING, true)
+        set(value) {
+            prefs.edit().putBoolean(NATURAL_SCROLLING, value).apply()
+        }
+
     private companion object {
         const val ID = "desktop_id"
         const val NAME = "desktop_name"
@@ -142,5 +152,6 @@ class RemoteStore(context: Context) {
         const val HOST = "desktop_host"
         const val PORT = "desktop_port"
         const val ENABLED = "send_to_computer"
+        const val NATURAL_SCROLLING = "natural_scrolling"
     }
 }

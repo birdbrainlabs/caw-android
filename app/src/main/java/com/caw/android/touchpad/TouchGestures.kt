@@ -3,14 +3,14 @@ package com.caw.android.touchpad
 import kotlin.math.hypot
 
 /**
- * The touchpad screen's gestures, turned into mouse actions:
+ * The touchpad screen's gestures (docs/BUILD.md section 11), turned into mouse actions:
  *
  * - one finger moving: the mouse moves by the finger's movement in dp (px / density, raw; the
  *   desktop applies acceleration);
  * - a tap (lifted before [LONG_PRESS_MS] without moving past [SLOP_DP]): left click;
  * - a two-finger tap (one lifts within [TWO_TAP_MS], neither moved): right click;
- * - two fingers moving: scroll, NATURAL (the page follows the fingers: fingers up = scroll down,
- *   so the finger movement is sent negated);
+ * - two fingers moving: scroll, NATURAL by default (the page follows the fingers: fingers up =
+ *   scroll down, so the finger movement is sent negated; [naturalScrolling] off sends it as it is);
  * - a long press (a finger still for [LONG_PRESS_MS]) then moving: left button down, moves, and
  *   left button up when the finger lifts (a drag). [Output.longPressEngaged] fires as it engages.
  *
@@ -261,10 +261,16 @@ class TouchGestures(private val density: Float, private val out: Output) {
         moveY += dyPx / density
     }
 
-    /** Natural scrolling: the page follows the fingers, so the finger movement is negated. */
+    /**
+     * Natural scrolling (on by default, a phone-only setting): the page follows the fingers, so the finger
+     * movement is negated. Off, the scroll follows the fingers' movement as it is (fingers down = scroll down).
+     */
+    var naturalScrolling = true
+
     private fun addScroll(dxPx: Float, dyPx: Float) {
-        scrollX -= dxPx / density
-        scrollY -= dyPx / density
+        val sign = if (naturalScrolling) -1.0 else 1.0
+        scrollX += sign * dxPx / density
+        scrollY += sign * dyPx / density
     }
 
     private fun flush(now: Long, force: Boolean) {

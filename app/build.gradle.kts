@@ -32,6 +32,13 @@ android {
         jvmTarget = "17"
     }
 
+    // The owner's own word list (word-fixes.personal.json) is bundled from outside the repo when that
+    // folder exists, so it never goes into git (docs/BUILD.md "Your own word list").
+    val personalAssets = file("${System.getProperty("user.home")}/.config/caw-android/assets")
+    if (personalAssets.isDirectory) {
+        sourceSets.getByName("main").assets.srcDir(personalAssets)
+    }
+
     // The speech model is read straight out of the APK; do not zip it.
     androidResources {
         noCompress += listOf("onnx")
@@ -39,11 +46,11 @@ android {
 }
 
 dependencies {
-    // sherpa-onnx (k2-fsa). The Android AAR is published as a GitHub release asset
-    // (sherpa-onnx-<version>.aar), not on Maven Central: put it at app/libs/sherpa-onnx.aar
-    // (see README.md, "Build") and this block uses it. The Maven coordinate below is only a
-    // fallback and does not resolve today. The Kotlin API used is com.k2fsa.sherpa.onnx.*,
-    // which ships inside that AAR.
+    // sherpa-onnx (k2-fsa). NOT CERTAIN this coordinate is on Maven Central: k2-fsa documents
+    // the Android AAR mainly as a GitHub release asset (sherpa-onnx-<version>.aar). If Gradle
+    // cannot resolve com.k2-fsa:sherpa-onnx, put the release AAR at app/libs/sherpa-onnx.aar
+    // (see docs/BUILD.md) and this block uses it instead. The Kotlin API used is
+    // com.k2fsa.sherpa.onnx.OnlineRecognizer, which ships inside that AAR.
     val localSherpa = file("libs/sherpa-onnx.aar")
     if (localSherpa.exists()) {
         implementation(files(localSherpa))
@@ -54,7 +61,7 @@ dependencies {
     // WebViewAssetLoader: serves assets/crumb/ at an https origin so the page's CSP 'self' works.
     implementation(libs.androidx.webkit)
 
-    // QR scanning for Send to computer pairing (no ML Kit / Play services needed).
+    // QR scanning for Send to computer pairing (no ML Kit / Play services: the phone has none).
     implementation(libs.zxing.android.embedded)
 
     testImplementation(libs.junit)

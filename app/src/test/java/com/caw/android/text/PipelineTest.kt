@@ -4,16 +4,20 @@ import com.caw.android.speech.RecognizerText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Realistic raw model output (ALL CAPS, as the streaming zipformer writes it) pushed through every
  * text step between the recognizer and the field: join + tidy -> cleaner -> word fixes -> commit string.
- * Uses the real bundled word-fixes.json.
+ * Uses a small inline list of test word fixes (the bundled seed ships empty).
  */
 class PipelineTest {
 
-    private val fixes = WordFixes(WordFixJson.parse(File("src/main/assets/word-fixes.json").readText()).fixes)
+    private val fixes = WordFixes(
+        listOf(
+            WordFix("akme|ackme", "acme", Capitalization.ALWAYS),
+            WordFix("colour", "color"),
+        ),
+    )
     private val pipeline = TextPipeline()
 
     /** [segments] are the recognizer's banked segments, the last one being the live one. */
@@ -68,7 +72,7 @@ class PipelineTest {
     }
 
     @Test
-    fun wordFixesStillApply() = assertEquals("The kernel is on GitHub.", run("THE COLONEL IS ON GIT HUB"))
+    fun wordFixesStillApply() = assertEquals("Ask Acme about the color.", run("ASK AKME ABOUT THE COLOUR"))
 
     @Test
     fun commitStringSpacing() {

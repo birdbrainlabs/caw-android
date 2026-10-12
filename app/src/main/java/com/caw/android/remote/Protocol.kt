@@ -4,12 +4,12 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 
-/** Caw Remote Protocol messages (v1 and v2). Each is one JSON object per line. */
+/** Caw Remote Protocol messages (docs/remote-protocol.md). Each is one JSON object per line. */
 object Protocol {
-    /** `hello` says v2 (touchpad messages); the desktop accepts v1 and v2. */
-    const val VERSION = 2
+    /** `hello` says v3 (v2 touchpad messages, v3 settings); the desktop accepts v1, v2 and v3. */
+    const val VERSION = 3
 
-    /** `pair_request` stays at v1: pairing did not change in v2. */
+    /** `pair_request` stays at v1: pairing did not change in v2 or v3. */
     const val PAIR_VERSION = 1
 
     /** The desktop's `error` reason (v2, once per connection, no id) when it cannot move the mouse. */
@@ -63,6 +63,23 @@ object Protocol {
     /** Two decimals are plenty for dp and keep the lines short. */
     private fun round2(v: Double): Double = Math.round(v * 100.0) / 100.0
 
+    // ---- v3: settings. Carry an id like text/key, but are never queued for resend. ----
+
+    fun settingsGet(id: Long): String = JSONObject().put("type", "settings_get").put("id", id).toString()
+
+    /** Only the fields of [change] that are set; `word_fixes` is the WHOLE list (it replaces the computer's). */
+    fun settingsSet(id: Long, change: SettingsChange): String {
+        val o = JSONObject().put("type", "settings_set").put("id", id)
+        change.wordFixes?.let { fixes ->
+            val m = JSONObject()
+            for ((heard, write) in fixes) m.put(heard, write)
+            o.put("word_fixes", m)
+        }
+        change.pointerSpeed?.let { o.put("pointer_speed", it) }
+        change.pointerAccel?.let { o.put("pointer_accel", it) }
+        return o.toString()
+    }
+
     fun ping(): String = JSONObject().put("type", "ping").toString()
 
     fun pong(): String = JSONObject().put("type", "pong").toString()
@@ -74,6 +91,8 @@ object Protocol {
         data class HelloOk(val desktopName: String) : Incoming()
         data class Ack(val id: Long) : Incoming()
         data class Error(val id: Long?, val reason: String) : Incoming()
+        /** v3: the answer to `settings_get`. */
+        data class Settings(val id: Long?, val settings: DesktopSettings) : Incoming()
         object Ping : Incoming()
         object Pong : Incoming()
         /** A type this phone does not know (a newer desktop), or a line that is not a JSON object. */
@@ -93,10 +112,26 @@ object Protocol {
             "hello_ok" -> Incoming.HelloOk(o.optString("desktop_name"))
             "ack" -> if (o.has("id")) Incoming.Ack(o.optLong("id")) else Incoming.Other(type, line)
             "error" -> Incoming.Error(if (o.has("id") && !o.isNull("id")) o.optLong("id") else null, o.optString("reason", "unknown"))
+            "settings" -> Incoming.Settings(if (o.has("id") && !o.isNull("id")) o.optLong("id") else null, settings(o))
             "ping" -> Incoming.Ping
             "pong" -> Incoming.Pong
             else -> Incoming.Other(type.ifEmpty { null }, line)
         }
+    }
+
+    /** A `settings` reply; missing speed / acceleration read as the desktop's defaults. */
+    private fun settings(o: JSONObject): DesktopSettings {
+        val fixes = LinkedHashMap<String, String>()
+        o.optJSONObject("word_fixes")?.let { m ->
+            for (heard in m.keys()) fixes[heard] = m.optString(heard)
+        }
+        return DesktopSettings(
+            desktopName = o.optString("desktop_name"),
+            desktopVersion = if (o.has("desktop_version") && !o.isNull("desktop_version")) o.optString("desktop_version") else null,
+            wordFixes = fixes,
+            pointerSpeed = o.optDouble("pointer_speed", SettingsLimits.SPEED_DEFAULT),
+            pointerAccel = o.optDouble("pointer_accel", SettingsLimits.ACCEL_DEFAULT),
+        )
     }
 }
 

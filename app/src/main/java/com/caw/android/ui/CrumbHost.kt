@@ -53,7 +53,7 @@ object CrumbHost {
     }
 
     /**
-     * Pushes a hold's state to Crumb, the same for the IME pill and
+     * Pushes a hold's state to Crumb (docs/crumb-spec.md section 5), the same for the IME pill and
      * the dictation screen. [holding]: finished text is waiting for a text box (IME only).
      * Returns true while the hold is finishing (the plain fallback orb then shows a spinner).
      */

@@ -1,11 +1,11 @@
 package com.caw.android.speech
 
 import com.caw.android.text.TextPipeline
-import com.caw.android.text.WordFixJson
+import com.caw.android.text.Capitalization
+import com.caw.android.text.WordFix
 import com.caw.android.text.WordFixes
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.io.File
 
 /**
  * Moonshine writes mixed case with punctuation. Its segments are joined by
@@ -14,7 +14,12 @@ import java.io.File
  */
 class MoonshineTextTest {
 
-    private val fixes = WordFixes(WordFixJson.parse(File("src/main/assets/word-fixes.json").readText()).fixes)
+    private val fixes = WordFixes(
+        listOf(
+            WordFix("akme|ackme", "acme", Capitalization.ALWAYS),
+            WordFix("colour", "color"),
+        ),
+    )
     private val pipeline = TextPipeline()
 
     private fun run(vararg segments: String): String =
@@ -46,7 +51,7 @@ class MoonshineTextTest {
 
     @Test
     fun properCaseIsNotLowercased() =
-        assertEquals("I told Alex about the iPad in New York.", run("I told Alex about the iPad in New York."))
+        assertEquals("I told Sam about the iPad in New York.", run("I told Sam about the iPad in New York."))
 
     @Test
     fun lastSegmentWithoutPunctuationGetsAStop() =
@@ -58,7 +63,7 @@ class MoonshineTextTest {
 
     @Test
     fun wordFixesStillApplyToMixedCase() =
-        assertEquals("The kernel is on GitHub.", run("The colonel is on git hub."))
+        assertEquals("Ask Acme about the color.", run("Ask Akme about the colour."))
 
     @Test
     fun streamingTidyIsUnchanged() =

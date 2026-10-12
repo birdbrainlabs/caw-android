@@ -2,7 +2,7 @@ package com.caw.android.session
 
 enum class StatusKind { READY, INFO, WARNING }
 
-/** Status words, as in the Mac app. Only the ready text is reworded (no Fn key on a phone). */
+/** Status words from docs/port-spec.md 3.3. Only the ready text is reworded (no Fn key on a phone). */
 data class Status(val text: String, val kind: StatusKind) {
     companion object {
         val READY = Status("Ready — hold to talk", StatusKind.READY)
@@ -22,7 +22,7 @@ data class Status(val text: String, val kind: StatusKind) {
 
         fun startFailed(error: String) = Status("Could not start transcription: $error", StatusKind.WARNING)
 
-        // "Send to computer". These stand in for READY while the mode is on.
+        // "Send to computer" (docs/remote-protocol.md). These stand in for READY while the mode is on.
 
         /** Connected: what is said goes to [computer]. */
         fun sendingTo(computer: String) = Status("Sending to $computer — hold to talk", StatusKind.READY)
@@ -38,8 +38,8 @@ data class Status(val text: String, val kind: StatusKind) {
         )
 
         /**
-         * The ready text, plain or with the paired computer: "Sending to my-laptop — hold to talk"
-         * while connected, "Not connected to my-laptop — N messages waiting" while away. Both the
+         * The ready text, plain or with the paired computer: "Sending to omarchy — hold to talk"
+         * while connected, "Not connected to omarchy — N messages waiting" while away. Both the
          * IME pill and the dictation screen show this.
          */
         fun readyFor(computer: String?, sending: Boolean, connected: Boolean, waiting: Int): Status = when {

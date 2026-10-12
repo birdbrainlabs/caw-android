@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Send to computer (Caw Remote Protocol): TLS socket to Caw Desktop on the Wi-Fi,
+    <!-- Send to computer (docs/remote-protocol.md): TLS socket to Caw Desktop on the Wi-Fi,
          reconnect when the network comes back, QR scan for pairing. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -69,6 +69,14 @@
             android:exported="false"
             android:label="@string/touchpad_title"
             android:theme="@android:style/Theme.Material.NoActionBar" />
+
+        <!-- Settings: the computer's word fixes and pointer (protocol v3), natural scrolling. From the dictation screen. -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_title"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- zxing-android-embedded's scanner, allowed to follow the phone's orientation. -->
         <activity

@@ -53,6 +53,13 @@
                     style="@style/CawButton"
                     android:text="@string/dictation_touchpad" />
 
+                <!-- Opens Settings (SettingsActivity). On its side it sits by Touchpad; upright, by the Computer row. -->
+                <TextView
+                    android:id="@+id/settings"
+                    style="@style/CawButton"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/dictation_settings" />
+
                 <View
                     android:layout_width="0dp"
                     android:layout_height="1dp"

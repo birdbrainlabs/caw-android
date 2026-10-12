@@ -37,7 +37,7 @@ import com.caw.android.ui.CrumbView
  * dictation screen; this pill is one of its fronts. The model lives in [SpeechEngine], which
  * outlives this service.
  *
- * "Send to computer" (Caw Remote Protocol): while that switch is on and a computer is paired,
+ * "Send to computer" (docs/remote-protocol.md): while that switch is on and a computer is paired,
  * the finished text goes to the computer ([FinishedText], [RemoteLink]) instead of into the phone's field,
  * Caw stays up (no switch back), and the pill shows the computer's name plus Backspace / Enter.
  */
@@ -356,7 +356,7 @@ class CawInputMethodService : InputMethodService(), Dictation.Front {
         showStatus(Status.READY)
     }
 
-    /** Pushes the current state to Crumb. */
+    /** Pushes the current state to Crumb (docs/crumb-spec.md section 5). */
     override fun refreshOrb() {
         // Only while Crumb is in this panel: the dictation screen may have borrowed him.
         val c = crumb?.takeIf { it.parent === crumbSlot }

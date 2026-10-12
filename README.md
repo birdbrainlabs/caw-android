@@ -31,10 +31,13 @@ not treated as mistakes, and a hold can last up to 5 minutes.
   and hold to drag.
 - **Word fixes.** Every recognizer mishears some of your words the same way
   every time. Caw keeps a list of "when it hears *this*, write *that*" in
-  `word-fixes.json` in the app's files (the same format as Caw for Mac). The
-  app has no editor for it yet; a debug build lets you read and replace it
-  with `adb shell run-as com.caw.android ...`. The seed list is
-  `app/src/main/assets/word-fixes.json`.
+  `word-fixes.json` in the app's files (the same format as Caw for Mac). It
+  ships empty. To build in your own list, put it at
+  `~/.config/caw-android/assets/word-fixes.personal.json` on the computer you
+  build on; that folder is outside the repo, so your list never ends up in git.
+- **Settings.** When the phone is paired with a computer, a Settings screen
+  shows the computer's word fixes (add, edit, delete) and its touchpad
+  pointer speed and acceleration, plus a phone-only natural-scrolling switch.
 - A built-in cleaner removes fillers and stutters and tidies spacing and
   capitals, and Caw tells you when the mic seems covered ("I can't hear you").
 
@@ -45,8 +48,7 @@ not treated as mistakes, and a hold can last up to 5 minutes.
 - No accounts, no analytics, no Google Play services.
 - Crumb's page is served from the app's own files; the WebView blocks every
   other request.
-- Debug builds keep the audio of the last 5 holds in the app's private files,
-  to help with tuning. Release builds do not.
+- Caw never saves your recordings. Audio is turned into text and thrown away.
 
 ## Requirements
 

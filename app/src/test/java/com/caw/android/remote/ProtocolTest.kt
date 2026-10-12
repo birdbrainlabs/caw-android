@@ -83,7 +83,7 @@ class ProtocolTest {
         }
         JSONObject(Protocol.hello("ab12")).let {
             assertEquals("hello", it.getString("type"))
-            assertEquals(2, it.getInt("v")) // v2: touchpad
+            assertEquals(3, it.getInt("v")) // v3: settings
             assertEquals("ab12", it.getString("device_id"))
         }
         JSONObject(Protocol.text(1, "Hello world. ")).let {
@@ -160,11 +160,11 @@ class ProtocolTest {
     @Test
     fun incomingMessages() {
         assertEquals(
-            Protocol.Incoming.PairOk("d1ca", "my-laptop", "cHJvb2Y="),
-            Protocol.parse("""{"type":"pair_ok","desktop_id":"d1ca","desktop_name":"my-laptop","proof":"cHJvb2Y="}"""),
+            Protocol.Incoming.PairOk("d1ca", "omarchy", "cHJvb2Y="),
+            Protocol.parse("""{"type":"pair_ok","desktop_id":"d1ca","desktop_name":"omarchy","proof":"cHJvb2Y="}"""),
         )
         assertEquals(Protocol.Incoming.PairError("bad_code"), Protocol.parse("""{"type":"pair_error","reason":"bad_code"}"""))
-        assertEquals(Protocol.Incoming.HelloOk("my-laptop"), Protocol.parse("""{"type":"hello_ok","desktop_name":"my-laptop"}"""))
+        assertEquals(Protocol.Incoming.HelloOk("omarchy"), Protocol.parse("""{"type":"hello_ok","desktop_name":"omarchy"}"""))
         assertEquals(Protocol.Incoming.Ack(7), Protocol.parse("""{"type":"ack","id":7}"""))
         assertEquals(Protocol.Incoming.Error(7, "no_focus"), Protocol.parse("""{"type":"error","id":7,"reason":"no_focus"}"""))
         assertEquals(Protocol.Incoming.Error(null, "unknown_type"), Protocol.parse("""{"type":"error","reason":"unknown_type"}"""))
@@ -177,5 +177,75 @@ class ProtocolTest {
         assertEquals(Protocol.Incoming.Other("pointer_move", """{"type":"pointer_move","dx":1}"""), Protocol.parse("""{"type":"pointer_move","dx":1}"""))
         assertEquals(Protocol.Incoming.Other(null, "not json"), Protocol.parse("not json"))
         assertEquals(Protocol.Incoming.Other(null, "[1,2]"), Protocol.parse("[1,2]"))
+    }
+
+    // ---- v3: settings ----
+
+    @Test
+    fun settingsGetAndSet() {
+        JSONObject(Protocol.settingsGet(7)).let {
+            assertEquals("settings_get", it.getString("type"))
+            assertEquals(7L, it.getLong("id"))
+            assertEquals(2, it.length())
+        }
+        // Only the fields that changed.
+        JSONObject(Protocol.settingsSet(8, SettingsChange(pointerSpeed = 2.0))).let {
+            assertEquals("settings_set", it.getString("type"))
+            assertEquals(8L, it.getLong("id"))
+            assertEquals(2.0, it.getDouble("pointer_speed"), 0.0)
+            assertFalse(it.has("pointer_accel"))
+            assertFalse(it.has("word_fixes"))
+        }
+        // word_fixes is the whole map; an empty map clears the list (it is still sent).
+        JSONObject(Protocol.settingsSet(9, SettingsChange(wordFixes = mapOf("car app" to "Caw app", "call app" to "Caw app")))).let {
+            val m = it.getJSONObject("word_fixes")
+            assertEquals(2, m.length())
+            assertEquals("Caw app", m.getString("car app"))
+            assertFalse(it.has("pointer_speed"))
+        }
+        assertEquals(0, JSONObject(Protocol.settingsSet(10, SettingsChange(wordFixes = emptyMap()))).getJSONObject("word_fixes").length())
+    }
+
+    @Test
+    fun parsesSettings() {
+        val m = Protocol.parse("""{"type":"settings","id":7,"desktop_name":"omarchy","desktop_version":"0.1.0",""" +
+            """"word_fixes":{"car app":"Caw app"},"pointer_speed":1.5,"pointer_accel":0.05}""")
+        assertTrue(m is Protocol.Incoming.Settings)
+        m as Protocol.Incoming.Settings
+        assertEquals(7L, m.id)
+        assertEquals("omarchy", m.settings.desktopName)
+        assertEquals("0.1.0", m.settings.desktopVersion)
+        assertEquals(mapOf("car app" to "Caw app"), m.settings.wordFixes)
+        assertEquals(1.5, m.settings.pointerSpeed, 0.0)
+        assertEquals(0.05, m.settings.pointerAccel, 0.0)
+    }
+
+    @Test
+    fun settingsWithFieldsMissingUseTheDefaults() {
+        val m = Protocol.parse("""{"type":"settings","id":3,"desktop_name":"omarchy"}""") as Protocol.Incoming.Settings
+        assertEquals(null, m.settings.desktopVersion)
+        assertTrue(m.settings.wordFixes.isEmpty())
+        assertEquals(SettingsLimits.SPEED_DEFAULT, m.settings.pointerSpeed, 0.0)
+        assertEquals(SettingsLimits.ACCEL_DEFAULT, m.settings.pointerAccel, 0.0)
+    }
+
+    @Test
+    fun settingsLimits() {
+        assertEquals(null, SettingsLimits.problem(SettingsChange(pointerSpeed = 0.1)))
+        assertEquals(null, SettingsLimits.problem(SettingsChange(pointerSpeed = 10.0, pointerAccel = 1.0)))
+        assertTrue(SettingsLimits.problem(SettingsChange(pointerSpeed = 0.05)) != null)
+        assertTrue(SettingsLimits.problem(SettingsChange(pointerSpeed = 10.1)) != null)
+        assertTrue(SettingsLimits.problem(SettingsChange(pointerAccel = -0.01)) != null)
+        assertTrue(SettingsLimits.problem(SettingsChange(pointerAccel = 1.01)) != null)
+        val five = (1..500).associate { "w$it" to "x" }
+        assertEquals(null, SettingsLimits.problem(SettingsChange(wordFixes = five)))
+        assertTrue(SettingsLimits.problem(SettingsChange(wordFixes = five + ("one more" to "x"))) != null)
+        assertTrue(SettingsLimits.problem(SettingsChange(wordFixes = mapOf("a".repeat(101) to "x"))) != null)
+        assertTrue(SettingsLimits.problem(SettingsChange(wordFixes = mapOf("a" to "x".repeat(101)))) != null)
+        // One typed fix: both sides needed; the heard phrase is stored as the desktop does.
+        assertEquals(null, SettingsLimits.fixProblem("Car App", "Caw app"))
+        assertTrue(SettingsLimits.fixProblem("  ", "Caw") != null)
+        assertTrue(SettingsLimits.fixProblem("car", " ") != null)
+        assertEquals("car app", SettingsLimits.phrase("  Car   APP "))
     }
 }

@@ -9,14 +9,14 @@ class StatusTest {
     fun readyIsPlainWithoutAComputer() {
         assertEquals(Status.READY, Status.readyFor(null, sending = false, connected = false, waiting = 0))
         // Paired but the switch is off.
-        assertEquals(Status.READY, Status.readyFor("my-laptop", sending = false, connected = true, waiting = 0))
+        assertEquals(Status.READY, Status.readyFor("omarchy", sending = false, connected = true, waiting = 0))
     }
 
     @Test
     fun readyNamesTheComputerWhileSending() {
-        assertEquals("Sending to my-laptop — hold to talk", Status.readyFor("my-laptop", true, true, 0).text)
-        assertEquals("Not connected to my-laptop", Status.readyFor("my-laptop", true, false, 0).text)
-        assertEquals("Not connected to my-laptop — 2 messages waiting", Status.readyFor("my-laptop", true, false, 2).text)
+        assertEquals("Sending to omarchy — hold to talk", Status.readyFor("omarchy", true, true, 0).text)
+        assertEquals("Not connected to omarchy", Status.readyFor("omarchy", true, false, 0).text)
+        assertEquals("Not connected to omarchy — 2 messages waiting", Status.readyFor("omarchy", true, false, 2).text)
     }
 
     @Test
@@ -29,14 +29,14 @@ class StatusTest {
     @Test
     fun touchpadLinkLine() {
         assertEquals(Status.TOUCHPAD_NOT_PAIRED, Status.touchpadLink(null, connected = false, pointerUnavailable = false))
-        assertEquals("Connected to my-laptop", Status.touchpadLink("my-laptop", true, false).text)
-        assertEquals("Reconnecting to my-laptop…", Status.touchpadLink("my-laptop", false, false).text)
-        assertEquals(StatusKind.WARNING, Status.touchpadLink("my-laptop", false, false).kind)
+        assertEquals("Connected to omarchy", Status.touchpadLink("omarchy", true, false).text)
+        assertEquals("Reconnecting to omarchy…", Status.touchpadLink("omarchy", false, false).text)
+        assertEquals(StatusKind.WARNING, Status.touchpadLink("omarchy", false, false).kind)
         assertEquals(
-            "Connected to my-laptop, but it can't move the mouse (pointer_unavailable)",
-            Status.touchpadLink("my-laptop", true, true).text,
+            "Connected to omarchy, but it can't move the mouse (pointer_unavailable)",
+            Status.touchpadLink("omarchy", true, true).text,
         )
         // Not connected wins: the flag is from the last connection.
-        assertEquals("Reconnecting to my-laptop…", Status.touchpadLink("my-laptop", false, true).text)
+        assertEquals("Reconnecting to omarchy…", Status.touchpadLink("omarchy", false, true).text)
     }
 }

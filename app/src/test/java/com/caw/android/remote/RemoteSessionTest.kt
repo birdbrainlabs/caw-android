@@ -46,13 +46,29 @@ class RemoteSessionTest {
         override fun onQueueChanged(waiting: Int) {
             events += "waiting $waiting"
         }
+
+        override fun onSettings(id: Long, settings: DesktopSettings) {
+            events += "settings $id ${settings.desktopName} ${settings.wordFixes.size}"
+        }
+
+        override fun onSettingsSaved(id: Long) {
+            events += "saved $id"
+        }
+
+        override fun onRequestFailed(id: Long, failure: RemoteSession.RequestFailure) {
+            events += "failed $id " + when (failure) {
+                is RemoteSession.RequestFailure.Refused -> failure.reason
+                RemoteSession.RequestFailure.ConnectionLost -> "lost"
+                RemoteSession.RequestFailure.TimedOut -> "timeout"
+            }
+        }
     }
 
     private val session = RemoteSession("phone01", listener)
 
     private fun ready(wire: FakeWire, now: Long = 0) {
         session.attach(wire, now)
-        session.onLine("""{"type":"hello_ok","desktop_name":"my-laptop"}""", now)
+        session.onLine("""{"type":"hello_ok","desktop_name":"omarchy"}""", now)
     }
 
     @Test
@@ -69,8 +85,8 @@ class RemoteSessionTest {
         val w = FakeWire()
         ready(w)
         assertEquals(RemoteSession.Phase.READY, session.phase)
-        assertEquals("my-laptop", session.desktopName)
-        assertTrue("ready my-laptop" in events)
+        assertEquals("omarchy", session.desktopName)
+        assertTrue("ready omarchy" in events)
     }
 
     @Test
@@ -89,10 +105,10 @@ class RemoteSessionTest {
     }
 
     @Test
-    fun helloSaysV2() {
+    fun helloSaysV3() {
         val w = FakeWire()
         session.attach(w, 0)
-        assertEquals(2, JSONObject(w.lines[0]).getInt("v"))
+        assertEquals(3, JSONObject(w.lines[0]).getInt("v"))
     }
 
     @Test
@@ -103,7 +119,7 @@ class RemoteSessionTest {
         session.attach(w, 0)
         // Connected but before hello_ok: dropped too.
         assertFalse(session.sendUnqueued(Protocol.click("left")))
-        session.onLine("""{"type":"hello_ok","desktop_name":"my-laptop"}""", 1)
+        session.onLine("""{"type":"hello_ok","desktop_name":"omarchy"}""", 1)
         assertEquals(listOf("hello"), w.types())
         assertTrue(session.sendUnqueued(Protocol.pointerMove(1.0, 2.0)))
         assertTrue(session.sendUnqueued(Protocol.scroll(0.0, 12.0)))
@@ -162,7 +178,7 @@ class RemoteSessionTest {
         session.attach(w, 100)
         // Nothing but hello until the desktop says hello_ok.
         assertEquals(listOf("hello"), w.types())
-        session.onLine("""{"type":"hello_ok","desktop_name":"my-laptop"}""", 110)
+        session.onLine("""{"type":"hello_ok","desktop_name":"omarchy"}""", 110)
         assertEquals(listOf("hello", "text", "key", "text"), w.types())
         assertEquals(listOf("Waiting one. ", "Waiting two. "), w.sent("text").map { it.getString("text") })
         assertEquals(listOf(1L, 2L, 3L), w.lines.drop(1).map { JSONObject(it).getLong("id") })
@@ -316,5 +332,72 @@ class RemoteSessionTest {
         val p = ReconnectPolicy()
         repeat(200) { p.onFailure() }
         assertEquals(30_000L, p.onFailure().delayMs)
+    }
+
+    // ---- v3: settings ----
+
+    @Test
+    fun settingsRequestsAreNeverQueued() {
+        // Not connected, or connected but not past hello: nothing sent, nothing kept for later.
+        assertNull(session.requestSettings(0))
+        val w = FakeWire()
+        session.attach(w, 0)
+        assertNull(session.changeSettings(SettingsChange(pointerSpeed = 2.0), 0))
+        session.onLine("""{"type":"hello_ok","desktop_name":"omarchy"}""", 0)
+        assertEquals(listOf("hello"), w.types())
+        assertEquals(0, session.outbox.size)
+        assertEquals(0, session.pendingRequests)
+    }
+
+    @Test
+    fun settingsGetIsAnsweredById() {
+        val w = FakeWire()
+        ready(w)
+        val id = session.requestSettings(0)!!
+        assertEquals(id, w.sent("settings_get")[0].getLong("id"))
+        session.onLine("""{"type":"settings","id":$id,"desktop_name":"omarchy","desktop_version":"0.1.0","word_fixes":{"car app":"Caw app"},"pointer_speed":1.5,"pointer_accel":0.05}""", 1)
+        assertEquals(listOf("ready omarchy", "settings $id omarchy 1"), events)
+        // A second answer to the same id (or one nobody asked for) is ignored.
+        session.onLine("""{"type":"settings","id":$id,"desktop_name":"omarchy"}""", 2)
+        assertEquals(2, events.size)
+    }
+
+    @Test
+    fun settingsSetAckAndErrorGoToTheRequestNotTheOutbox() {
+        val w = FakeWire()
+        ready(w)
+        val text = session.sendText("Hello. ")
+        val set = session.changeSettings(SettingsChange(pointerSpeed = 2.0), 0)!!
+        val bad = session.changeSettings(SettingsChange(pointerAccel = 5.0), 0)!!
+        // Settings ids come from the same sequence as text and keys: no two messages share one.
+        assertEquals(setOf(text.id, set, bad).size, 3)
+        events.clear()
+        session.onLine("""{"type":"ack","id":$set}""", 1)
+        session.onLine("""{"type":"error","id":$bad,"reason":"invalid_settings: pointer_accel must be 0-1"}""", 1)
+        assertEquals(listOf("saved $set", "failed $bad invalid_settings: pointer_accel must be 0-1"), events)
+        // The text is still waiting for its own ack.
+        assertEquals(1, session.outbox.size)
+        session.onLine("""{"type":"ack","id":${text.id}}""", 1)
+        assertEquals("acked ${text.id}", events[2])
+    }
+
+    @Test
+    fun settingsRequestsFailWhenTheConnectionGoesOrNothingComes() {
+        val w = FakeWire()
+        ready(w)
+        val a = session.requestSettings(0)!!
+        session.tick(RemoteSession.REQUEST_TIMEOUT_MS - 1)
+        assertEquals(1, session.pendingRequests)
+        session.onLine("""{"type":"pong"}""", RemoteSession.REQUEST_TIMEOUT_MS - 1)
+        session.tick(RemoteSession.REQUEST_TIMEOUT_MS)
+        assertTrue("failed $a timeout" in events)
+        val b = session.changeSettings(SettingsChange(wordFixes = emptyMap()), RemoteSession.REQUEST_TIMEOUT_MS)!!
+        session.detach()
+        assertTrue("failed $b lost" in events)
+        assertEquals(0, session.pendingRequests)
+        // Nothing is sent again on the next connection.
+        val w2 = FakeWire()
+        ready(w2)
+        assertEquals(listOf("hello"), w2.types())
     }
 }

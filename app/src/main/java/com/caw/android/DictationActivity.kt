@@ -28,8 +28,8 @@ import com.caw.android.ui.CrumbView
  * to the transcript, with the same timing, status words and spacing as the IME pill. Copy puts the
  * whole transcript on the clipboard, Clear empties it. While Send to computer is on, every finished
  * text also goes to the paired computer, and the computer's name, its connection and Backspace /
- * Enter keys show; the Computer row opens [ComputerActivity] to pair or switch it, and Touchpad
- * opens [TouchpadActivity] for the paired computer.
+ * Enter keys show; the Computer row opens [ComputerActivity] to pair or switch it, Touchpad
+ * opens [TouchpadActivity] for the paired computer, and Settings opens [SettingsActivity].
  *
  * The hold is [Dictation]'s (shared with the IME); the transcript and status live in
  * [DictationScreen], which outlives this activity across rotation.
@@ -77,6 +77,7 @@ class DictationActivity : Activity(), DictationScreen.View, RemoteLink.Observer 
         clearButton.setOnClickListener { screen.clear() }
         statusView.setOnClickListener { screen.statusTapped() }
         computerRow.setOnClickListener { startActivity(Intent(this, ComputerActivity::class.java)) }
+        findViewById<View>(R.id.settings).setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         // The touchpad needs a paired computer; without one the button opens the pairing screen.
         touchpadButton.setOnClickListener {
             val target = if (RemoteLink.state.desktop != null) TouchpadActivity::class.java else ComputerActivity::class.java

@@ -24,6 +24,7 @@
     <string name="dictation_computer_away">Sending to %1$s: not connected</string>
     <string name="dictation_computer_waiting">Sending to %1$s: not connected, %2$d waiting</string>
     <string name="dictation_touchpad">Touchpad</string>
+    <string name="dictation_settings">Settings</string>
 
     <!-- Touchpad (TouchpadActivity) -->
     <string name="touchpad_title">Touchpad</string>
@@ -38,9 +39,44 @@
     <string name="computer_pair_help">Start pairing on the computer (Caw Desktop). It shows a QR code and a code for two minutes.</string>
     <string name="computer_scan">Scan QR</string>
     <string name="computer_or_type">Or type what the computer shows:</string>
-    <string name="computer_host_hint">Computer\'s address, e.g. 10.0.0.20</string>
+    <string name="computer_host_hint">Computer\'s address, e.g. 192.168.1.20</string>
     <string name="computer_port_hint">Port</string>
     <string name="computer_code_hint">Code, e.g. ABCD-EFGH-JKMN-PQRS</string>
     <string name="computer_pair">Pair</string>
     <string name="computer_scan_prompt">Point at the QR code on the computer</string>
+
+    <!-- Settings (SettingsActivity). Word fixes and the pointer live on the computer (protocol v3);
+         natural scrolling is kept on the phone. -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_not_paired">No computer paired. Set one up on the Computer screen.</string>
+    <string name="settings_not_connected">Not connected to %1$s</string>
+    <string name="settings_loading">Loading settings…</string>
+    <string name="settings_computer">%1$s · Caw Desktop %2$s</string>
+    <string name="settings_computer_no_version">%1$s · Caw Desktop</string>
+    <string name="settings_not_loaded">Connected to %1$s, but its settings did not load.</string>
+    <string name="settings_fixes_title">Word fixes on the computer</string>
+    <string name="settings_fixes_help">When the computer hears a phrase, it writes yours instead. Whole words only; capitals do not matter.</string>
+    <string name="settings_fixes_empty">No word fixes yet.</string>
+    <string name="settings_fix_row">%1$s → %2$s</string>
+    <string name="settings_fix_add">Add word fix</string>
+    <string name="settings_fix_edit">Edit word fix</string>
+    <string name="settings_fix_delete">Delete</string>
+    <string name="settings_fix_delete_title">Delete this word fix?</string>
+    <string name="settings_fix_hears">When it hears</string>
+    <string name="settings_fix_write">Write</string>
+    <string name="settings_save">Save</string>
+    <string name="settings_cancel">Cancel</string>
+    <string name="settings_saving">Saving…</string>
+    <string name="settings_saved">Saved on %1$s</string>
+    <string name="settings_refused">The computer refused the change: %1$s</string>
+    <string name="settings_load_refused">The computer could not send its settings: %1$s</string>
+    <string name="settings_change_not_connected">Not changed: not connected to %1$s</string>
+    <string name="settings_no_answer">%1$s did not answer, so the change may not have been saved.</string>
+    <string name="settings_load_no_answer">%1$s did not send its settings. Open Settings again to retry.</string>
+    <string name="settings_touchpad_title">Touchpad</string>
+    <string name="settings_speed">Pointer speed</string>
+    <string name="settings_accel">Pointer acceleration</string>
+    <string name="settings_pointer_help">Set on the computer and used at once: try it on the touchpad.</string>
+    <string name="settings_natural">Natural scrolling</string>
+    <string name="settings_natural_help">Kept on this phone. On: the page follows your fingers, as on a phone screen. Off: moving two fingers down scrolls down, like a mouse wheel.</string>
 </resources>

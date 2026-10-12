@@ -5,7 +5,6 @@ import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
 import android.util.Log
-import java.net.Inet4Address
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -16,7 +15,8 @@ import java.util.concurrent.TimeUnit
 class DesktopFinder(context: Context) {
     private val nsd = context.applicationContext.getSystemService(NsdManager::class.java)
 
-    data class Found(val host: String, val port: Int, val name: String?)
+    /** Every address the lookup gave, in its order ([AddressOrder] decides which to try first). */
+    data class Found(val hosts: List<String>, val port: Int, val name: String?)
 
     fun find(desktopId: String, timeoutMs: Long = 6_000): Found? {
         val manager = nsd ?: return null
@@ -41,12 +41,12 @@ class DesktopFinder(context: Context) {
 
                 override fun onServiceResolved(info: NsdServiceInfo) {
                     val id = info.attributes["id"]?.let { String(it, Charsets.UTF_8) }
-                    val host = hostOf(info)
-                    Log.i(TAG, "discovery: ${info.serviceName} id=$id at $host:${info.port}")
+                    val hosts = hostsOf(info)
+                    Log.i(TAG, "discovery: ${info.serviceName} id=$id at $hosts port ${info.port}")
                     synchronized(lock) {
                         resolving = false
-                        if (id.equals(desktopId, ignoreCase = true) && host != null) {
-                            result = Found(host, info.port, info.attributes["name"]?.let { String(it, Charsets.UTF_8) })
+                        if (id.equals(desktopId, ignoreCase = true) && hosts.isNotEmpty()) {
+                            result = Found(hosts, info.port, info.attributes["name"]?.let { String(it, Charsets.UTF_8) })
                             done.countDown()
                         }
                     }
@@ -86,13 +86,12 @@ class DesktopFinder(context: Context) {
         return synchronized(lock) { result }
     }
 
-    private fun hostOf(info: NsdServiceInfo): String? {
-        if (Build.VERSION.SDK_INT >= 34) {
-            val all = info.hostAddresses
-            (all.firstOrNull { it is Inet4Address } ?: all.firstOrNull())?.let { return it.hostAddress }
-        }
+    /** All resolved addresses; an IPv6 link-local one keeps its scope (`fe80::…%wlan0`). */
+    private fun hostsOf(info: NsdServiceInfo): List<String> {
+        val all = if (Build.VERSION.SDK_INT >= 34) info.hostAddresses.mapNotNull { it.hostAddress } else emptyList()
         @Suppress("DEPRECATION")
-        return info.host?.hostAddress
+        val legacy = info.host?.hostAddress
+        return (all + listOfNotNull(legacy)).distinct()
     }
 
     companion object {

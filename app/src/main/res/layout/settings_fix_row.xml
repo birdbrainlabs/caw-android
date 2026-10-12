@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One word fix on the Settings screen: tap the text to edit it, Delete removes it (after asking). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <TextView
+        android:id="@+id/fix_text"
+        style="@style/CawButton"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical|start"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp" />
+
+    <TextView
+        android:id="@+id/fix_delete"
+        style="@style/CawButton"
+        android:layout_marginStart="8dp"
+        android:text="@string/settings_fix_delete" />
+</LinearLayout>

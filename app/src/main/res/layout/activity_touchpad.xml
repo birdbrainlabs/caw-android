@@ -13,7 +13,7 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Connected to my-laptop / Reconnecting to my-laptop… / can't move the mouse. -->
+        <!-- Connected to omarchy / Reconnecting to omarchy… / can't move the mouse. -->
         <TextView
             android:id="@+id/link"
             android:layout_width="match_parent"

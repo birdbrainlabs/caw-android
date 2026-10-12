@@ -13,7 +13,10 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.ConnectException
+import java.net.Inet6Address
+import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.NetworkInterface
 import java.net.Socket
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -30,22 +33,31 @@ import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509TrustManager
 
 /**
- * "Send to computer": the connection to the paired Caw Desktop (Caw Remote Protocol).
+ * "Send to computer": the connection to the paired Caw Desktop (docs/remote-protocol.md).
  * One per process, shared by the input method and [com.caw.android.ComputerActivity].
  *
  * Threads: everything that touches the socket or [RemoteSession] runs on the "CawRemote" thread;
  * each connection has its own reader thread that only hands lines over. Observers are called on
  * the main thread. While the switch is on and a computer is paired, it stays connected: pings
  * every 15 s, reconnects with backoff, and looks the computer up by mDNS when its address fails.
- * The touchpad screen keeps it connected the same way while it is open, switch or not.
+ * The touchpad and settings screens keep it connected the same way while they are open, switch or not.
+ *
+ * Each attempt tries every address it knows ([AddressOrder]: the stored one and those the last
+ * mDNS lookup found, IPv4 first), moving on when one fails; only when all fail does it wait
+ * out the backoff.
  */
 object RemoteLink {
     private const val TAG = "CawRemote"
     private const val CONNECT_TIMEOUT_MS = 5_000
     private const val HANDSHAKE_TIMEOUT_MS = 8_000
     private const val PAIR_ANSWER_TIMEOUT_MS = 15_000
-    /** The touchpad keeps the connection this long after it closes, so turning the phone does not drop it. */
-    private const val TOUCHPAD_LINGER_MS = 10_000L
+    /** A screen keeps the connection this long after it closes, so turning the phone does not drop it. */
+    private const val SCREEN_LINGER_MS = 10_000L
+
+    /** Screens that keep Caw connected while they are open ([holdOpen]). */
+    const val SCREEN_TOUCHPAD = "touchpad"
+    const val SCREEN_SETTINGS = "settings"
+
     /** Touchpad messages are logged (debug) as one summary line per this long, not one per message. */
     private const val POINTER_LOG_MS = 250L
 
@@ -66,6 +78,18 @@ object RemoteLink {
         /** Finished text goes to the computer instead of the phone's field. */
         val sending: Boolean get() = enabled && desktop != null
         val connected: Boolean get() = connection == Connection.CONNECTED
+    }
+
+    /** The answer to [getSettings] / [setSettings], on the main thread. */
+    sealed class SettingsReply {
+        data class Loaded(val settings: DesktopSettings) : SettingsReply()
+        object Saved : SettingsReply()
+        /** The computer answered `error` with [reason]. */
+        data class Refused(val reason: String) : SettingsReply()
+        /** Not sent: the computer is not connected (settings requests are never queued). */
+        object NotConnected : SettingsReply()
+        /** Sent, but the connection went away or nothing came back in 10 s. */
+        object NoAnswer : SettingsReply()
     }
 
     interface Observer {
@@ -102,15 +126,21 @@ object RemoteLink {
     private var conn: Conn? = null
     private val policy = ReconnectPolicy()
     private var retry: ScheduledFuture<*>? = null
-    /** The touchpad screen is open (or closed less than [TOUCHPAD_LINGER_MS] ago). */
-    private var touchpad = false
-    private var touchpadLinger: ScheduledFuture<*>? = null
+    /** Screens that are open (or closed less than [SCREEN_LINGER_MS] ago) and keep the link up. */
+    private val heldBy = HashSet<String>()
+    private val lingers = HashMap<String, ScheduledFuture<*>>()
+    /** Addresses the last mDNS lookup found for the paired computer, tried after the stored one. */
+    private var resolvedHosts: List<String> = emptyList()
+    /** A background lookup for an IPv4 address already ran for this computer id (once per process). */
+    private var ipv4LookupFor: String? = null
+    /** Settings requests waiting for their answer: id -> callback (called on the main thread). */
+    private val settingsCallbacks = HashMap<Long, (SettingsReply) -> Unit>()
     private val movesLog = DeltaLog("pointer_move")
     private val scrollsLog = DeltaLog("scroll")
     private var pointerLogFlush: ScheduledFuture<*>? = null
 
-    /** Stay connected: Send to computer is on, or the touchpad is open. */
-    private val wanted: Boolean get() = enabled || touchpad
+    /** Stay connected: Send to computer is on, or the touchpad or settings screen is open. */
+    private val wanted: Boolean get() = enabled || heldBy.isNotEmpty()
 
     fun init(context: Context) {
         synchronized(this) {
@@ -159,6 +189,7 @@ object RemoteLink {
     fun forget() = control.execute {
         store.forget()
         desktop = null
+        resolvedHosts = emptyList()
         enabled = false
         session?.outbox?.clear()
         closeConn("forgotten")
@@ -188,32 +219,66 @@ object RemoteLink {
         withSession { it.sendKey(key, count) }
     }
 
-    // ---- touchpad (v2) ----
+    // ---- screens that keep the link up ----
 
     /**
-     * The touchpad screen opened or closed. While it is open Caw stays connected to the paired
-     * computer even with Send to computer off; after it closes the link lingers 10 s (rotation).
+     * The [screen] ([SCREEN_TOUCHPAD], [SCREEN_SETTINGS]) opened or closed. While one is open Caw
+     * stays connected to the paired computer even with Send to computer off; after it closes the
+     * link lingers 10 s (rotation).
      */
-    fun setTouchpadOpen(open: Boolean) {
+    fun holdOpen(screen: String, open: Boolean) {
         if (!initialized) return
         control.execute {
-            touchpadLinger?.cancel(false)
-            touchpadLinger = null
+            lingers.remove(screen)?.cancel(false)
             if (open) {
-                touchpad = true
+                heldBy += screen
                 if (conn == null) {
                     policy.reset()
                     cancelRetry()
                     ensure()
                 }
             } else {
-                touchpadLinger = control.schedule({
-                    touchpadLinger = null
-                    touchpad = false
+                lingers[screen] = control.schedule({
+                    lingers.remove(screen)
+                    heldBy -= screen
                     ensure()
-                }, TOUCHPAD_LINGER_MS, TimeUnit.MILLISECONDS)
+                }, SCREEN_LINGER_MS, TimeUnit.MILLISECONDS)
             }
         }
+    }
+
+    // ---- settings (v3) ----
+
+    /** Asks the computer for its settings. [done] gets [SettingsReply.NotConnected] at once when it is not connected. */
+    fun getSettings(done: (SettingsReply) -> Unit) = control.execute {
+        val id = if (conn != null) session?.requestSettings(now()) else null
+        track(id, "settings_get", done)
+    }
+
+    /** Changes the computer's settings ([change]'s word fixes replace the whole list). */
+    fun setSettings(change: SettingsChange, done: (SettingsReply) -> Unit) = control.execute {
+        val id = if (conn != null) session?.changeSettings(change, now()) else null
+        val what = buildList {
+            change.wordFixes?.let { add("word_fixes: ${it.size}") }
+            change.pointerSpeed?.let { add("pointer_speed: $it") }
+            change.pointerAccel?.let { add("pointer_accel: $it") }
+        }.joinToString(", ")
+        track(id, "settings_set ($what)", done)
+    }
+
+    private fun track(id: Long?, what: String, done: (SettingsReply) -> Unit) {
+        if (id == null) {
+            Log.i(TAG, "dropped $what (not connected)")
+            main.post { done(SettingsReply.NotConnected) }
+            return
+        }
+        Log.i(TAG, "sent $what id $id")
+        settingsCallbacks[id] = done
+    }
+
+    private fun answer(id: Long, reply: SettingsReply) {
+        val done = settingsCallbacks.remove(id) ?: return
+        main.post { done(reply) }
     }
 
     /** Moves the mouse by [dx], [dy] dp. Dropped when not connected. */
@@ -327,6 +392,7 @@ object RemoteLink {
                 desktop = d.copy(name = desktopName).also { store.saveDesktop(it) }
             }
             Log.i(TAG, "connected to $desktopName")
+            desktop?.let { findIpv4Later(it) }
             if (!wanted) {
                 // Just paired with the switch off: hello_ok proved the link; nothing to keep open.
                 closeConn("Send to computer is off")
@@ -353,6 +419,23 @@ object RemoteLink {
         }
 
         override fun onQueueChanged(waiting: Int) = Unit
+
+        override fun onSettings(id: Long, settings: DesktopSettings) {
+            // The word fixes themselves are not logged.
+            Log.i(TAG, "settings $id: ${settings.desktopName} ${settings.desktopVersion}, ${settings.wordFixes.size} word fixes, " +
+                "pointer_speed ${settings.pointerSpeed}, pointer_accel ${settings.pointerAccel}")
+            answer(id, SettingsReply.Loaded(settings))
+        }
+
+        override fun onSettingsSaved(id: Long) {
+            Log.i(TAG, "ack $id (settings saved)")
+            answer(id, SettingsReply.Saved)
+        }
+
+        override fun onRequestFailed(id: Long, failure: RemoteSession.RequestFailure) {
+            Log.w(TAG, "settings request $id failed: $failure")
+            answer(id, if (failure is RemoteSession.RequestFailure.Refused) SettingsReply.Refused(failure.reason) else SettingsReply.NoAnswer)
+        }
     }
 
     private fun ensure() {
@@ -367,29 +450,82 @@ object RemoteLink {
         if (conn != null || retry != null) return
         connection = Connection.CONNECTING
         publish()
-        val socket = try {
-            open(d.host, d.port, PinnedTrust(d.fingerprintHex))
-        } catch (t: Throwable) {
-            connectFailed(d, t)
+        // Every known address, IPv4 first; the next one when one fails.
+        val hosts = AddressOrder.candidates(d.host, resolvedHosts)
+        val failures = ArrayList<Pair<String, Throwable>>()
+        for (host in hosts) {
+            val socket = try {
+                open(host, d.port, PinnedTrust(d.fingerprintHex))
+            } catch (t: Throwable) {
+                Log.i(TAG, "connect $host port ${d.port} failed: ${describe(t, host, d.port)}")
+                failures += host to t
+                continue
+            }
+            AddressOrder.afterSuccess(d.host, host)?.let { better ->
+                Log.i(TAG, "storing $better for ${d.name} (was ${d.host})")
+                desktop = d.copy(host = better).also { store.saveDesktop(it) }
+            }
+            start(socket, LineFramer())
             return
         }
-        start(socket, LineFramer())
+        connectFailed(d, failures)
     }
 
-    private fun connectFailed(d: PairedDesktop, t: Throwable) {
-        problem = describe(t, d.host, d.port)
-        Log.i(TAG, "connect ${d.host}:${d.port} failed: $problem")
+    /** Every address in [failures] failed (in the order tried). */
+    private fun connectFailed(d: PairedDesktop, failures: List<Pair<String, Throwable>>) {
+        // A certificate mismatch says the most; otherwise the preferred address's reason.
+        val (host, t) = failures.firstOrNull { (_, e) -> isCertificateProblem(e) } ?: failures.firstOrNull()
+            ?: (d.host to UnknownHostException(d.host))
+        problem = describe(t, host, d.port) + if (failures.size > 1) " (tried ${failures.size} addresses)" else ""
         val decision = policy.onFailure()
         if (decision.discover) {
             val found = DesktopFinder(app).find(d.id)
-            if (found != null && (found.host != d.host || found.port != d.port) && desktop?.id == d.id) {
-                Log.i(TAG, "found ${d.name} at ${found.host}:${found.port}")
-                desktop = d.copy(host = found.host, port = found.port).also { store.saveDesktop(it) }
-                scheduleRetry(0)
-                return
+            if (found != null && desktop?.id == d.id) {
+                resolvedHosts = found.hosts
+                val keep = AddressOrder.toStore(d.host, found.hosts)
+                val tried = failures.map { it.first }.toSet()
+                val news = AddressOrder.candidates(keep, found.hosts).filter { it !in tried }
+                if (keep != d.host || found.port != d.port) {
+                    desktop = d.copy(host = keep, port = found.port).also { store.saveDesktop(it) }
+                }
+                Log.i(TAG, "found ${d.name} at ${found.hosts} port ${found.port}; stored ${desktop?.host}")
+                if (news.isNotEmpty() || found.port != d.port) {
+                    scheduleRetry(0)
+                    return
+                }
             }
         }
         scheduleRetry(decision.delayMs)
+    }
+
+    /**
+     * Connected over IPv6 with no IPv4 address stored (an address saved before the Oct 11 fix, or a
+     * lookup that only found link-local): look the computer up once in the background so the next
+     * reconnect can try IPv4 first. Off the CawRemote thread, so sending is not held up.
+     */
+    private fun findIpv4Later(d: PairedDesktop) {
+        if (AddressOrder.family(d.host) != AddressOrder.Family.V6 || ipv4LookupFor == d.id) return
+        ipv4LookupFor = d.id
+        Thread({
+            val found = DesktopFinder(app).find(d.id)
+            control.execute {
+                val now = desktop
+                if (found == null || now?.id != d.id) return@execute
+                resolvedHosts = found.hosts
+                val keep = AddressOrder.toStore(now.host, found.hosts)
+                Log.i(TAG, "background lookup: ${d.name} at ${found.hosts}; stored $keep")
+                if (keep != now.host) desktop = now.copy(host = keep).also { store.saveDesktop(it) }
+            }
+        }, "CawRemoteFind").apply { isDaemon = true }.start()
+    }
+
+    private fun isCertificateProblem(t: Throwable): Boolean {
+        var cause: Throwable? = t
+        while (cause != null) {
+            if (cause is CertificateException) return true
+            cause = cause.cause
+        }
+        return false
     }
 
     private fun scheduleRetry(delayMs: Long) {
@@ -464,6 +600,7 @@ object RemoteLink {
                     val name = m.desktopName.ifBlank { nameHint?.takeIf { it.isNotBlank() } ?: host }
                     val d = PairedDesktop(id, name, PairProof.hex(desktopFp), host, port)
                     if (desktop?.id != id) session?.outbox?.clear()
+                    resolvedHosts = emptyList()
                     desktop = d
                     store.saveDesktop(d)
                     enabled = store.enabled
@@ -510,10 +647,10 @@ object RemoteLink {
         ctx.init(arrayOf(identity.keyManager()), arrayOf(trust), null)
         val raw = Socket()
         try {
-            raw.connect(InetSocketAddress(host, port), CONNECT_TIMEOUT_MS)
+            raw.connect(InetSocketAddress(address(host), port), CONNECT_TIMEOUT_MS)
             raw.tcpNoDelay = true
             raw.keepAlive = true
-            val s = ctx.socketFactory.createSocket(raw, host, port, true) as SSLSocket
+            val s = ctx.socketFactory.createSocket(raw, AddressOrder.bare(host), port, true) as SSLSocket
             s.enabledProtocols = arrayOf("TLSv1.3")
             s.useClientMode = true
             s.soTimeout = HANDSHAKE_TIMEOUT_MS
@@ -529,6 +666,24 @@ object RemoteLink {
         }
     }
 
+    /**
+     * [host] as an address. An IPv6 link-local address keeps its scope (`fe80::…%wlan0` or `%23`);
+     * if the platform does not take the interface name, it is looked up by hand.
+     */
+    private fun address(host: String): InetAddress {
+        val h = AddressOrder.bare(host)
+        val pct = h.indexOf('%')
+        if (pct < 0 || AddressOrder.family(h) != AddressOrder.Family.V6) return InetAddress.getByName(h)
+        return try {
+            InetAddress.getByName(h)
+        } catch (e: UnknownHostException) {
+            val bytes = InetAddress.getByName(h.substring(0, pct)).address
+            val scope = h.substring(pct + 1)
+            scope.toIntOrNull()?.let { Inet6Address.getByAddress(null, bytes, it) }
+                ?: Inet6Address.getByAddress(null, bytes, NetworkInterface.getByName(scope) ?: throw e)
+        }
+    }
+
     private fun deviceName(): String =
         Settings.Global.getString(app.contentResolver, Settings.Global.DEVICE_NAME)?.takeIf { it.isNotBlank() }
             ?: Build.MODEL
@@ -540,13 +695,7 @@ object RemoteLink {
     }
 
     private fun describe(t: Throwable, host: String, port: Int): String {
-        var cause: Throwable? = t
-        while (cause != null) {
-            if (cause is CertificateException) {
-                return "The computer at $host has a different certificate than when it was paired. Pair again."
-            }
-            cause = cause.cause
-        }
+        if (isCertificateProblem(t)) return "The computer at $host has a different certificate than when it was paired. Pair again."
         return when (t) {
             is ConnectException -> "Could not reach $host:$port (is Caw Desktop running?)"
             is SocketTimeoutException -> "$host:$port did not answer in time"

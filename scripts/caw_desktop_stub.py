@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Test desktop for Caw's "Send to computer" (Caw Remote Protocol v1 and v2).
+"""Test desktop for Caw's "Send to computer" (docs/remote-protocol.md, Caw Remote Protocol v1 and v2).
 
 Stands in for the real Caw Desktop (a Rust app written elsewhere) so the phone side can be tested.
 Standard library only. It does not type anything: it prints what the phone sends and answers.
 
-    uv run --python 3.12 scripts/caw_desktop_stub.py          # on macOS (see below)
+    uv run --python 3.12 scripts/caw_desktop_stub.py          # on the Mac (see below)
     python3 scripts/caw_desktop_stub.py                       # where python3 has TLS 1.3
 
-macOS's /usr/bin/python3 (3.9, LibreSSL 2.8.3) has no TLS 1.3, so on macOS run it with uv's
+The Mac's /usr/bin/python3 (3.9, LibreSSL 2.8.3) has no TLS 1.3, so on the Mac run it with uv's
 Python 3.12 as above. Any CPython 3.8+ built against OpenSSL 1.1.1 or newer works.
 
 What it does:
@@ -19,11 +19,14 @@ What it does:
   Prints the code as XXXX-XXXX-XXXX-XXXX and the caw://pair URL; writes the QR as PNG when the
   `qrcode` module happens to be installed. Five wrong codes end pairing mode.
 - Trusted phones are kept in caw_desktop_stub.trusted.json next to this file.
-- hello (v1 or v2) -> hello_ok; text/key -> printed, ack; ping -> pong; unknown type -> error unknown_type.
+- hello (v1, v2 or v3) -> hello_ok; text/key -> printed, ack; ping -> pong; unknown type -> error unknown_type.
 - v2 touchpad: pointer_move and scroll are summed and printed at most once per 250 ms
   (">>> MOVE x14 sum dx=31.2 dy=-4.5"), click is printed (">>> CLICK left down"); no ack unless a
   click carries an id. --no-pointer answers the first pointer message of each connection with
   error pointer_unavailable, as a desktop that cannot move the mouse does.
+- v3 settings: settings_get -> settings (kept in memory for the stub's run, starting empty with
+  speed 1.5 and acceleration 0.05); settings_set is checked against the desktop's limits and
+  answered ack or error "invalid_settings: ..." (printed as ">>> SETTINGS ...").
 - Advertises _caw._tcp with `dns-sd -R` (macOS) or `avahi-publish-service` (Linux) when present.
 
 Options: --port N, --name NAME, --code CODE (fixed pairing code, for tests), --no-pairing,
@@ -58,7 +61,7 @@ CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 KEYS = {"backspace", "delete", "enter", "tab", "escape", "left", "right", "up", "down", "home", "end"}
 SILENCE_S = 45
 MAX_FAILURES = 5
-VERSIONS = {1, 2}
+VERSIONS = (1, 2, 3)
 BUTTONS = {"left", "right", "middle"}
 POINTER_PRINT_S = 0.25
 
@@ -100,7 +103,7 @@ def short_id(fp):
     return fp[:16].hex()
 
 
-# ---- pairing code and proofs ----
+# ---- pairing code and proofs (docs/remote-protocol.md "Pairing") ----
 
 def normalize_code(code):
     return code.upper().replace("-", "").replace(" ", "").replace("O", "0").replace("I", "1").replace("L", "1")
@@ -225,7 +228,7 @@ def accept_any_client_cert(ctx):
 
 def server_context():
     if not ssl.HAS_TLSv1_3:
-        sys.exit("this Python's ssl (%s) has no TLS 1.3. On macOS run:\n"
+        sys.exit("this Python's ssl (%s) has no TLS 1.3. On the Mac run:\n"
                  "    uv run --python 3.12 scripts/caw_desktop_stub.py" % ssl.OPENSSL_VERSION)
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ctx.minimum_version = ssl.TLSVersion.TLSv1_3
@@ -401,7 +404,7 @@ class Conn:
                     continue
                 if kind == "hello":
                     if msg.get("v", 1) not in VERSIONS:
-                        say(self.addr, "hello v=%r: this stub speaks v1 and v2; disconnecting" % msg.get("v"))
+                        say(self.addr, "hello v=%r: this stub speaks v1, v2 and v3; disconnecting" % msg.get("v"))
                         return
                     phone = trusted_phone(phone_fp.hex())
                     if phone is None:
@@ -466,6 +469,23 @@ class Conn:
             self.send({"type": "ack", "id": mid})
         elif kind in ("pointer_move", "scroll", "click"):
             self.pointer(msg, kind, mid)
+        elif kind == "settings_get":
+            say(">>> SETTINGS get id=%s" % mid)
+            self.send(dict({"type": "settings", "id": mid, "desktop_name": self.name, "desktop_version": "stub"}, **SETTINGS))
+        elif kind == "settings_set":
+            problem = settings_problem(msg)
+            if problem:
+                say(">>> SETTINGS set id=%s refused: %s" % (mid, problem))
+                self.send({"type": "error", "id": mid, "reason": "invalid_settings: " + problem})
+                return
+            if "word_fixes" in msg:
+                SETTINGS["word_fixes"] = {k.strip().lower(): v for k, v in msg["word_fixes"].items()}
+            for key in ("pointer_speed", "pointer_accel"):
+                if key in msg:
+                    SETTINGS[key] = float(msg[key])
+            say(">>> SETTINGS set id=%s: %d word fixes, speed %s, accel %s" % (
+                mid, len(SETTINGS["word_fixes"]), SETTINGS["pointer_speed"], SETTINGS["pointer_accel"]))
+            self.send({"type": "ack", "id": mid})
         else:
             reply = {"type": "error", "reason": "unknown_type"}
             if mid is not None:
@@ -499,6 +519,31 @@ class Conn:
             say(self.addr, "<-", json.dumps(msg), "(bad dx/dy, ignored)")
             return
         (self.moves if kind == "pointer_move" else self.scrolls).add(float(dx), float(dy))
+
+
+# ---- v3 settings (in memory) ----
+
+SETTINGS = {"word_fixes": {}, "pointer_speed": 1.5, "pointer_accel": 0.05}
+
+
+def settings_problem(msg):
+    """The desktop's limits for settings_set; None when it is fine."""
+    def number(v):
+        return isinstance(v, (int, float)) and not isinstance(v, bool)
+    if "pointer_speed" in msg and not (number(msg["pointer_speed"]) and 0.1 <= msg["pointer_speed"] <= 10):
+        return "pointer_speed must be 0.1-10"
+    if "pointer_accel" in msg and not (number(msg["pointer_accel"]) and 0 <= msg["pointer_accel"] <= 1):
+        return "pointer_accel must be 0-1"
+    if "word_fixes" in msg:
+        fixes = msg["word_fixes"]
+        if not isinstance(fixes, dict):
+            return "word_fixes must be an object"
+        if len(fixes) > 500:
+            return "at most 500 word fixes"
+        for k, v in fixes.items():
+            if not isinstance(v, str) or not k.strip() or len(k) > 100 or len(v) > 100:
+                return "bad word fix %r" % k
+    return None
 
 
 # ---- network helpers ----

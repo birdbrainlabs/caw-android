@@ -94,14 +94,14 @@ class PairingTest {
 
     @Test
     fun qrLinkParses() {
-        val t = PairTarget.parse("caw://pair?h=10.0.0.36&p=47820&c=ABCDEFGHJKMNPQRS&n=my-laptop")
-        assertEquals(PairTarget("10.0.0.36", 47820, "ABCDEFGHJKMNPQRS", "my-laptop"), t)
+        val t = PairTarget.parse("caw://pair?h=192.168.1.20&p=47820&c=ABCDEFGHJKMNPQRS&n=omarchy")
+        assertEquals(PairTarget("192.168.1.20", 47820, "ABCDEFGHJKMNPQRS", "omarchy"), t)
     }
 
     @Test
     fun qrNameIsUrlDecoded() {
-        val t = PairTarget.parse("caw://pair?h=10.0.0.2&p=5000&c=abcd-efgh-jkmn-pqrs&n=Alex%27s%20laptop")!!
-        assertEquals("Alex's laptop", t.name)
+        val t = PairTarget.parse("caw://pair?h=10.0.0.2&p=5000&c=abcd-efgh-jkmn-pqrs&n=My%20laptop")!!
+        assertEquals("My laptop", t.name)
         assertEquals(5000, t.port)
     }
 

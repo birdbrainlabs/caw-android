@@ -35,8 +35,11 @@ class Outbox(private val capacity: Int = 100) {
 
     val size: Int get() = items.size
 
+    /** The next id. Settings requests (v3) take theirs from here too, so no two messages share an id. */
+    fun takeId(): Long = nextId++
+
     fun add(payload: Payload): Item {
-        val item = Item(nextId++, payload)
+        val item = Item(takeId(), payload)
         items += item
         while (items.size > capacity) {
             items.removeAt(0)
@@ -101,6 +104,10 @@ class ReconnectPolicy(
  *
  * Per connection: [attach] sends `hello`; `hello_ok` makes it [Phase.READY] and flushes the
  * outbox; pings every 15 s; 45 s without hearing anything closes it ([Wire.close]).
+ *
+ * Settings requests (v3) are written only while ready and never queued: each waits for its
+ * answer (`settings`, `ack` or `error` with its id) and fails when the connection goes or after
+ * [REQUEST_TIMEOUT_MS].
  */
 class RemoteSession(private val deviceId: String, private val listener: Listener, capacity: Int = 100) {
 
@@ -117,6 +124,22 @@ class RemoteSession(private val deviceId: String, private val listener: Listener
         /** The desktop answered `error`; [item] is null if it named no id or an unknown one. */
         fun onRejected(item: Outbox.Item?, reason: String)
         fun onQueueChanged(waiting: Int)
+
+        /** v3: the `settings` answer to the request [id]. */
+        fun onSettings(id: Long, settings: DesktopSettings) {}
+
+        /** v3: the computer acknowledged the `settings_set` [id]. */
+        fun onSettingsSaved(id: Long) {}
+
+        /** v3: the settings request [id] got no answer, or an `error`. */
+        fun onRequestFailed(id: Long, failure: RequestFailure) {}
+    }
+
+    sealed class RequestFailure {
+        /** The computer answered `error` with this reason. */
+        data class Refused(val reason: String) : RequestFailure()
+        object ConnectionLost : RequestFailure()
+        object TimedOut : RequestFailure()
     }
 
     enum class Phase { DOWN, HELLO_SENT, READY }
@@ -125,6 +148,7 @@ class RemoteSession(private val deviceId: String, private val listener: Listener
         const val PING_EVERY_MS = 15_000L
         const val SILENCE_MS = 45_000L
         const val HELLO_TIMEOUT_MS = 10_000L
+        const val REQUEST_TIMEOUT_MS = 10_000L
     }
 
     val outbox = Outbox(capacity)
@@ -139,6 +163,12 @@ class RemoteSession(private val deviceId: String, private val listener: Listener
     private var attachedAt = 0L
     private var lastHeard = 0L
     private var lastPing = 0L
+
+    /** Settings requests waiting for their answer: id -> when it was sent. */
+    private val requests = LinkedHashMap<Long, Long>()
+
+    /** Settings requests still waiting for an answer. */
+    val pendingRequests: Int get() = requests.size
 
     /** A new connection (already past TLS and the fingerprint check). */
     fun attach(wire: Wire, now: Long) {
@@ -156,6 +186,35 @@ class RemoteSession(private val deviceId: String, private val listener: Listener
         wire = null
         phase = Phase.DOWN
         outbox.markAllUnsent()
+        failRequests(RequestFailure.ConnectionLost)
+    }
+
+    /**
+     * v3: asks for the computer's settings. Returns the request's id, or null (nothing sent) when
+     * the computer is not ready: settings requests are never queued.
+     */
+    fun requestSettings(now: Long): Long? = request(now) { Protocol.settingsGet(it) }
+
+    /** v3: changes the computer's settings; null (nothing sent) when it is not ready. */
+    fun changeSettings(change: SettingsChange, now: Long): Long? = request(now) { Protocol.settingsSet(it, change) }
+
+    private fun request(now: Long, line: (Long) -> String): Long? {
+        val w = wire ?: return null
+        if (phase != Phase.READY) return null
+        val id = outbox.takeId()
+        requests[id] = now
+        if (!w.write(line(id))) {
+            requests.remove(id)
+            return null
+        }
+        return id
+    }
+
+    private fun failRequests(failure: RequestFailure) {
+        if (requests.isEmpty()) return
+        val ids = requests.keys.toList()
+        requests.clear()
+        for (id in ids) listener.onRequestFailed(id, failure)
     }
 
     fun sendText(text: String): Outbox.Item = queue(Outbox.Payload.Text(text))
@@ -198,14 +257,27 @@ class RemoteSession(private val deviceId: String, private val listener: Listener
                 listener.onReady(m.desktopName)
                 flush()
             }
-            is Protocol.Incoming.Ack -> outbox.remove(m.id)?.let { item ->
-                listener.onAcked(item)
-                listener.onQueueChanged(outbox.size)
+            is Protocol.Incoming.Ack -> {
+                val item = outbox.remove(m.id)
+                if (item != null) {
+                    listener.onAcked(item)
+                    listener.onQueueChanged(outbox.size)
+                } else if (requests.remove(m.id) != null) {
+                    listener.onSettingsSaved(m.id)
+                }
             }
             is Protocol.Incoming.Error -> {
+                if (m.id != null && requests.remove(m.id) != null) {
+                    listener.onRequestFailed(m.id, RequestFailure.Refused(m.reason))
+                    return
+                }
                 val item = m.id?.let { outbox.remove(it) }
                 listener.onRejected(item, m.reason)
                 if (item != null) listener.onQueueChanged(outbox.size)
+            }
+            is Protocol.Incoming.Settings -> {
+                // An answer without an id, or to a request that already timed out, is ignored.
+                if (m.id != null && requests.remove(m.id) != null) listener.onSettings(m.id, m.settings)
             }
             Protocol.Incoming.Ping -> wire?.write(Protocol.pong())
             Protocol.Incoming.Pong -> Unit
@@ -224,6 +296,11 @@ class RemoteSession(private val deviceId: String, private val listener: Listener
         if (phase == Phase.HELLO_SENT && now - attachedAt >= HELLO_TIMEOUT_MS) {
             w.close("no hello_ok")
             return
+        }
+        val late = requests.filterValues { now - it >= REQUEST_TIMEOUT_MS }.keys
+        for (id in late) {
+            requests.remove(id)
+            listener.onRequestFailed(id, RequestFailure.TimedOut)
         }
         if (phase == Phase.READY && now - lastPing >= PING_EVERY_MS) {
             lastPing = now

@@ -7,7 +7,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 data class WordFixDocument(val version: Int, val about: String?, val fixes: List<WordFix>)
 
-/** Reads and writes the word-fixes.json format (the same as the Mac app's). */
+/** Reads and writes the word-fixes.json format (docs/port-spec.md 1.1 and 1.5). */
 object WordFixJson {
     const val DEFAULT_ABOUT = "Word fixes: when the recognizer writes \"from\", your text says \"to\". " +
         "Applied in order. Edit them in Settings › Words & Learning."
@@ -56,7 +56,9 @@ object WordFixJson {
  * The user's word-fixes.json in the app's files dir. On first use the bundled seed is copied there
  * (never over an existing file). The file is re-checked at most every 0.5 s and reloaded when it changed.
  *
- * @param readSeed returns the bundled seed JSON (assets/word-fixes.json).
+ * @param readSeed returns the bundled seed JSON: assets/word-fixes.personal.json when the build
+ *   bundled one (the owner's own list, from outside the repo, docs/BUILD.md "Your own word list"),
+ *   else assets/word-fixes.json (see [seedAsset]).
  * @param post runs listener callbacks on the main thread.
  */
 class WordFixStore(
@@ -67,6 +69,13 @@ class WordFixStore(
 ) {
     companion object {
         const val FILE_NAME = "word-fixes.json"
+
+        /** The owner's own seed, bundled only from ~/.config/caw-android/assets (never in the repo). */
+        const val PERSONAL_SEED = "word-fixes.personal.json"
+
+        /** The seed asset to read: the personal one when the APK has it, else the bundled sample. */
+        fun seedAsset(assetNames: Collection<String>): String =
+            if (PERSONAL_SEED in assetNames) PERSONAL_SEED else FILE_NAME
         private const val RECHECK_MS = 500L
     }
 

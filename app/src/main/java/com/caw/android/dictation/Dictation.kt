@@ -1,7 +1,6 @@
 package com.caw.android.dictation
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -11,13 +10,11 @@ import com.caw.android.session.HoldSession
 import com.caw.android.session.Status
 import com.caw.android.speech.AudioFeed
 import com.caw.android.speech.DebugBench
-import com.caw.android.speech.HoldDump
 import com.caw.android.speech.MicCapture
 import com.caw.android.speech.MicCoverHint
 import com.caw.android.speech.SpeechEngine
 import com.caw.android.text.TextPipeline
 import com.caw.android.text.WordFixStore
-import java.io.File
 
 /**
  * Process-wide hold-to-talk, shared by the places Caw dictates from: the dictation screen
@@ -98,7 +95,6 @@ object Dictation : HoldSession.Host {
         private set
 
     private var lastStatus: Status = Status.READY
-    private var holdDump: HoldDump? = null
 
     val phase: HoldSession.Phase get() = session.phase
     val isActive: Boolean get() = session.isActive
@@ -125,7 +121,10 @@ object Dictation : HoldSession.Host {
         app = context.applicationContext
         wordFixes = WordFixStore(
             dir = app.filesDir,
-            readSeed = { app.assets.open(WordFixStore.FILE_NAME).bufferedReader().use { it.readText() } },
+            readSeed = {
+                val seed = WordFixStore.seedAsset(app.assets.list("")?.toList().orEmpty())
+                app.assets.open(seed).bufferedReader().use { it.readText() }
+            },
             post = { main.post(it) },
         )
         // Start loading now (once per process) so the first hold rarely waits.
@@ -195,9 +194,6 @@ object Dictation : HoldSession.Host {
         engine.feed?.cancel()
         val feed = AudioFeed()
         engine.feed = feed
-        // Debug builds keep the last few holds as WAVs in files/holds so a miss can be studied.
-        val dump = if (app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) HoldDump(File(app.filesDir, "holds")) else null
-        holdDump = dump
         // Loading is a no-op once the model is in; if it is still loading, the tasks below wait
         // behind it on the worker while the mic keeps queueing audio.
         if (!engine.isLoaded) engine.load(app.assets)
@@ -231,7 +227,6 @@ object Dictation : HoldSession.Host {
 
             override fun onSamples(samples: FloatArray, peak: Float, rms: Float) {
                 feed.capture(samples)
-                dump?.add(samples)
                 engine.onWorker { drainOnWorker(feed) }
                 main.post {
                     if (engine.feed === feed) {
@@ -304,15 +299,6 @@ object Dictation : HoldSession.Host {
                 val stats = feed.stats()
                 Log.i(TAG, stats.line())
                 val covered = MicCoverHint.covered(stats.rms, stats.voiceRms)
-                holdDump?.let { d ->
-                    holdDump = null
-                    try {
-                        val name = "hold-" + java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
-                        Log.i(TAG, "saved ${d.save(name).name}")
-                    } catch (t: Throwable) {
-                        Log.w(TAG, "could not save the hold", t)
-                    }
-                }
                 main.post {
                     if (engine.feed === feed) {
                         session.onFinal(text, covered)

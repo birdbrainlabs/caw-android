@@ -63,8 +63,8 @@ class DisfluencyCleanerTest {
 
     @Test
     fun wordFixesRunAfterCapitalsAndBeforeTheFullStop() {
-        val fixes = WordFixes(listOf(WordFix("eyepod", "iPod", Capitalization.EXACT)))
-        assertEquals("iPod is here.", cleaner.clean("eyepod is here") { fixes.apply(it) })
+        val fixes = WordFixes(listOf(WordFix("iphone", "iPhone", Capitalization.EXACT)))
+        assertEquals("iPhone is here.", cleaner.clean("iphone is here") { fixes.apply(it) })
     }
 
     @Test

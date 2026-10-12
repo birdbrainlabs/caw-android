@@ -26,3 +26,6 @@ app/libs/*.aar
 scripts/caw_desktop_stub.*.pem
 scripts/caw_desktop_stub.trusted.json
 scripts/caw_desktop_stub.qr.png
+
+# The owner's own word list lives in ~/.config/caw-android/assets, never in the project.
+word-fixes.personal.json

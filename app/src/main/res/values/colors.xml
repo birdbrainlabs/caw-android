@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The Mac app's colours -->
+    <!-- From docs/port-spec.md section 4.3 -->
     <color name="caw_tint">#E9694F</color>
     <color name="caw_blue">#3B82F6</color>
     <color name="caw_disc">#2D3038</color>
