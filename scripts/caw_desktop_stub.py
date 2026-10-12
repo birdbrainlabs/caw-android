@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test desktop for Caw's "Send to computer" (Caw Remote Protocol v1 and v2, PROTOCOL.md in the caw-desktop repo).
+"""Test desktop for Caw's "Send to computer" (Caw Remote Protocol v1-v4, PROTOCOL.md in the caw-desktop repo).
 
 Stands in for the real Caw Desktop (a Rust app written elsewhere) so the phone side can be tested.
 Standard library only. It does not type anything: it prints what the phone sends and answers.
@@ -19,7 +19,7 @@ What it does:
   Prints the code as XXXX-XXXX-XXXX-XXXX and the caw://pair URL; writes the QR as PNG when the
   `qrcode` module happens to be installed. Five wrong codes end pairing mode.
 - Trusted phones are kept in caw_desktop_stub.trusted.json next to this file.
-- hello (v1, v2 or v3) -> hello_ok; text/key -> printed, ack; ping -> pong; unknown type -> error unknown_type.
+- hello (v1 to v4) -> hello_ok; text/key -> printed, ack; ping -> pong; unknown type -> error unknown_type.
 - v2 touchpad: pointer_move and scroll are summed and printed at most once per 250 ms
   (">>> MOVE x14 sum dx=31.2 dy=-4.5"), click is printed (">>> CLICK left down"); no ack unless a
   click carries an id. --no-pointer answers the first pointer message of each connection with
@@ -27,10 +27,14 @@ What it does:
 - v3 settings: settings_get -> settings (kept in memory for the stub's run, starting empty with
   speed 1.5 and acceleration 0.05); settings_set is checked against the desktop's limits and
   answered ack or error "invalid_settings: ..." (printed as ">>> SETTINGS ...").
+- v4 shortcuts: settings carry `shortcuts` (starting empty); settings_set replaces the whole list
+  (at most 48; name 1-30 characters after trimming). key may carry mods (super, ctrl, alt, shift),
+  printed as ">>> KEY id=7: super+enter x1"; an unknown key or modifier, or one held twice, is
+  answered error unknown_key. --v3 leaves shortcuts out of settings, as an older desktop does.
 - Advertises _caw._tcp with `dns-sd -R` (macOS) or `avahi-publish-service` (Linux) when present.
 
 Options: --port N, --name NAME, --code CODE (fixed pairing code, for tests), --no-pairing,
---no-mdns, --pair-seconds N, --no-pointer.
+--no-mdns, --pair-seconds N, --no-pointer, --v3.
 """
 
 import argparse
@@ -58,10 +62,15 @@ TRUSTED_FILE = os.path.join(HERE, "caw_desktop_stub.trusted.json")
 QR_FILE = os.path.join(HERE, "caw_desktop_stub.qr.png")
 
 CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-KEYS = {"backspace", "delete", "enter", "tab", "escape", "left", "right", "up", "down", "home", "end"}
+KEYS = ({"backspace", "delete", "enter", "tab", "escape", "left", "right", "up", "down", "home", "end",
+         "space", "page_up", "page_down", "insert", "minus", "equal", "comma", "period", "slash", "semicolon",
+         "apostrophe", "bracket_left", "bracket_right", "backslash", "grave"}
+        | set("abcdefghijklmnopqrstuvwxyz0123456789") | {"f%d" % n for n in range(1, 13)})
+MODS = ("super", "ctrl", "alt", "shift")
+MAX_SHORTCUTS = 48
 SILENCE_S = 45
 MAX_FAILURES = 5
-VERSIONS = (1, 2, 3)
+VERSIONS = (1, 2, 3, 4)
 BUTTONS = {"left", "right", "middle"}
 POINTER_PRINT_S = 0.25
 
@@ -461,17 +470,21 @@ class Conn:
             say(">>> TEXT id=%s: %r" % (mid, text))
             self.send({"type": "ack", "id": mid})
         elif kind == "key":
-            key, count = msg.get("key"), msg.get("count", 1)
-            if key not in KEYS or not isinstance(count, int) or count < 1:
+            key, count, mods = msg.get("key"), msg.get("count", 1), msg.get("mods", [])
+            if not mods_ok(mods) or key not in KEYS:
+                self.send({"type": "error", "id": mid, "reason": "unknown_key"})
+                return
+            if not isinstance(count, int) or count < 1:
                 self.send({"type": "error", "id": mid, "reason": "bad_key"})
                 return
-            say(">>> KEY id=%s: %s x%d" % (mid, key, count))
+            say(">>> KEY id=%s: %s x%d" % (mid, "+".join([m for m in MODS if m in mods] + [key]), count))
             self.send({"type": "ack", "id": mid})
         elif kind in ("pointer_move", "scroll", "click"):
             self.pointer(msg, kind, mid)
         elif kind == "settings_get":
             say(">>> SETTINGS get id=%s" % mid)
-            self.send(dict({"type": "settings", "id": mid, "desktop_name": self.name, "desktop_version": "stub"}, **SETTINGS))
+            shown = {k: v for k, v in SETTINGS.items() if not (OLD_V3 and k == "shortcuts")}
+            self.send(dict({"type": "settings", "id": mid, "desktop_name": self.name, "desktop_version": "stub"}, **shown))
         elif kind == "settings_set":
             problem = settings_problem(msg)
             if problem:
@@ -480,11 +493,15 @@ class Conn:
                 return
             if "word_fixes" in msg:
                 SETTINGS["word_fixes"] = {k.strip().lower(): v for k, v in msg["word_fixes"].items()}
+            if "shortcuts" in msg:
+                SETTINGS["shortcuts"] = [{"name": s["name"].strip(), "key": s["key"], "mods": [m for m in MODS if m in s.get("mods", [])]}
+                                         for s in msg["shortcuts"]]
             for key in ("pointer_speed", "pointer_accel"):
                 if key in msg:
                     SETTINGS[key] = float(msg[key])
-            say(">>> SETTINGS set id=%s: %d word fixes, speed %s, accel %s" % (
-                mid, len(SETTINGS["word_fixes"]), SETTINGS["pointer_speed"], SETTINGS["pointer_accel"]))
+            say(">>> SETTINGS set id=%s: %d word fixes, %d shortcuts, speed %s, accel %s" % (
+                mid, len(SETTINGS["word_fixes"]), len(SETTINGS["shortcuts"]), SETTINGS["pointer_speed"],
+                SETTINGS["pointer_accel"]))
             self.send({"type": "ack", "id": mid})
         else:
             reply = {"type": "error", "reason": "unknown_type"}
@@ -523,7 +540,12 @@ class Conn:
 
 # ---- v3 settings (in memory) ----
 
-SETTINGS = {"word_fixes": {}, "pointer_speed": 1.5, "pointer_accel": 0.05}
+SETTINGS = {"word_fixes": {}, "pointer_speed": 1.5, "pointer_accel": 0.05, "shortcuts": []}
+OLD_V3 = False  # --v3: no shortcuts in settings, as a desktop older than v4
+
+
+def mods_ok(mods):
+    return isinstance(mods, list) and all(m in MODS for m in mods) and len(set(mods)) == len(mods)
 
 
 def settings_problem(msg):
@@ -543,6 +565,22 @@ def settings_problem(msg):
         for k, v in fixes.items():
             if not isinstance(v, str) or not k.strip() or len(k) > 100 or len(v) > 100:
                 return "bad word fix %r" % k
+    if "shortcuts" in msg:
+        if OLD_V3:
+            return "shortcuts are not supported"
+        shortcuts = msg["shortcuts"]
+        if not isinstance(shortcuts, list):
+            return "shortcuts must be a list"
+        if len(shortcuts) > MAX_SHORTCUTS:
+            return "at most %d shortcuts" % MAX_SHORTCUTS
+        for s in shortcuts:
+            if not isinstance(s, dict) or not isinstance(s.get("name"), str):
+                return "bad shortcut"
+            name = s["name"].strip()
+            if not 1 <= len(name) <= 30:
+                return "shortcut names must be 1-30 characters"
+            if s.get("key") not in KEYS or not mods_ok(s.get("mods", [])):
+                return "bad shortcut %r" % name
     return None
 
 
@@ -582,7 +620,10 @@ def main():
     ap.add_argument("--no-mdns", action="store_true")
     ap.add_argument("--no-pointer", action="store_true",
                     help="answer touchpad messages with error pointer_unavailable (once per connection)")
+    ap.add_argument("--v3", action="store_true", help="leave shortcuts out of settings, as a desktop older than v4")
     args = ap.parse_args()
+    global OLD_V3
+    OLD_V3 = args.v3
 
     ensure_identity()
     ctx = server_context()

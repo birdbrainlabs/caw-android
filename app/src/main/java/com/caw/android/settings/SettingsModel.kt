@@ -1,13 +1,15 @@
 package com.caw.android.settings
 
 import com.caw.android.remote.DesktopSettings
+import com.caw.android.remote.Protocol
+import com.caw.android.remote.Shortcut
 import com.caw.android.remote.SettingsLimits
 import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
  * The Settings screen's logic without Android: which computer line to
- * show, when the editors are usable, word-fix list edits, and the sliders' steps. The texts are in
+ * show, when the editors are usable, word-fix and shortcut list edits, and the sliders' steps. The texts are in
  * res/values/strings.xml; [SettingsActivity][com.caw.android.SettingsActivity] maps [ComputerLine] to them.
  */
 object SettingsModel {
@@ -57,6 +59,25 @@ object SettingsModel {
 
     fun withoutFix(fixes: Map<String, String>, heard: String): Map<String, String> =
         LinkedHashMap(fixes).apply { remove(heard) }
+
+    // ---- shortcuts (v4): shown in the computer's order; rows are found by position, as names may repeat ----
+
+    /** [shortcuts] with the one at [index] replaced by [shortcut], or [shortcut] added at the end (null [index]). */
+    fun withShortcut(shortcuts: List<Shortcut>, index: Int?, shortcut: Shortcut): List<Shortcut> {
+        val s = shortcut.copy(name = shortcut.name.trim(), mods = Protocol.MODS.filter { it in shortcut.mods })
+        return if (index == null || index !in shortcuts.indices) shortcuts + s
+        else shortcuts.toMutableList().apply { set(index, s) }
+    }
+
+    fun withoutShortcut(shortcuts: List<Shortcut>, index: Int): List<Shortcut> =
+        shortcuts.filterIndexed { i, _ -> i != index }
+
+    /** [shortcuts] with the one at [index] moved [by] places (-1 up, +1 down); unchanged at either end. */
+    fun moved(shortcuts: List<Shortcut>, index: Int, by: Int): List<Shortcut> {
+        val to = index + by
+        if (index !in shortcuts.indices || to !in shortcuts.indices) return shortcuts
+        return shortcuts.toMutableList().apply { add(to, removeAt(index)) }
+    }
 
     // ---- sliders: speed 0.1-10 in steps of 0.1, acceleration 0-1 in steps of 0.01 ----
 

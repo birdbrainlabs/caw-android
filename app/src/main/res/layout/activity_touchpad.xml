@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- TouchpadActivity: the paired computer's touchpad, with Crumb, Backspace and Enter under it.
+<!-- TouchpadActivity: the computer's shortcuts on top, its touchpad, with Crumb, Backspace and Enter under it.
      No ScrollView anywhere: a scrolling parent would take a moving finger. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -12,6 +12,23 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:padding="16dp">
+
+        <!-- The computer's shortcut buttons (layout/shortcut_button.xml, added at runtime), one finger high.
+             Gone while it has none. -->
+        <HorizontalScrollView
+            android:id="@+id/shortcut_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/shortcut_row"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
 
         <!-- Connected to omarchy / Reconnecting to omarchy… / can't move the mouse. -->
         <TextView

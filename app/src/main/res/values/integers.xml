@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Columns of shortcut buttons on the dictation screen (DictationActivity); 3 on its side. -->
+    <integer name="shortcut_columns">2</integer>
+</resources>

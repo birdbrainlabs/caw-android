@@ -25,6 +25,10 @@
     <string name="dictation_computer_waiting">Sending to %1$s: not connected, %2$d waiting</string>
     <string name="dictation_touchpad">Touchpad</string>
     <string name="dictation_settings">Settings</string>
+    <!-- While Send to computer is on, the transcript gives way to this line and the shortcut buttons. -->
+    <string name="dictation_sent">Sent: %1$s</string>
+    <string name="dictation_sent_nothing">Sent: nothing yet</string>
+    <string name="dictation_shortcuts_empty">No shortcuts yet. Add them in Settings.</string>
 
     <!-- Touchpad (TouchpadActivity) -->
     <string name="touchpad_title">Touchpad</string>
@@ -45,7 +49,7 @@
     <string name="computer_pair">Pair</string>
     <string name="computer_scan_prompt">Point at the QR code on the computer</string>
 
-    <!-- Settings (SettingsActivity). Word fixes and the pointer live on the computer (protocol v3);
+    <!-- Settings (SettingsActivity). Word fixes, shortcuts (v4) and the pointer live on the computer (protocol v3);
          natural scrolling is kept on the phone. -->
     <string name="settings_title">Settings</string>
     <string name="settings_not_paired">No computer paired. Set one up on the Computer screen.</string>
@@ -73,6 +77,25 @@
     <string name="settings_change_not_connected">Not changed: not connected to %1$s</string>
     <string name="settings_no_answer">%1$s did not answer, so the change may not have been saved.</string>
     <string name="settings_load_no_answer">%1$s did not send its settings. Open Settings again to retry.</string>
+    <string name="settings_shortcuts_title">Shortcuts on the computer</string>
+    <string name="settings_shortcuts_help">Buttons that press keys on the computer. They show on Caw\'s screen while Send to computer is on, and on the touchpad.</string>
+    <string name="settings_shortcuts_empty">No shortcuts yet.</string>
+    <string name="settings_shortcuts_unsupported">This computer\'s Caw Desktop has no shortcuts. Update it to 0.3 or newer.</string>
+    <string name="settings_shortcut_row">%1$s · %2$s</string>
+    <string name="settings_shortcut_add">Add shortcut</string>
+    <string name="settings_shortcut_edit">Edit shortcut</string>
+    <string name="settings_shortcut_delete_title">Delete this shortcut?</string>
+    <string name="settings_shortcut_name">Name</string>
+    <string name="settings_shortcut_hold">Hold</string>
+    <string name="settings_shortcut_key">Key</string>
+    <string name="settings_shortcut_up">Move up</string>
+    <string name="settings_shortcut_down">Move down</string>
+    <string name="settings_shortcut_up_arrow">↑</string>
+    <string name="settings_shortcut_down_arrow">↓</string>
+    <string name="mod_super">Super</string>
+    <string name="mod_ctrl">Ctrl</string>
+    <string name="mod_alt">Alt</string>
+    <string name="mod_shift">Shift</string>
     <string name="settings_touchpad_title">Touchpad</string>
     <string name="settings_speed">Pointer speed</string>
     <string name="settings_accel">Pointer acceleration</string>

@@ -83,7 +83,7 @@ class ProtocolTest {
         }
         JSONObject(Protocol.hello("ab12", "9f2c41d07ab3e655")).let {
             assertEquals("hello", it.getString("type"))
-            assertEquals(3, it.getInt("v")) // v3: settings
+            assertEquals(4, it.getInt("v")) // v4: shortcuts
             assertEquals("ab12", it.getString("device_id"))
             assertEquals("9f2c41d07ab3e655", it.getString("session"))
         }
@@ -248,5 +248,76 @@ class ProtocolTest {
         assertTrue(SettingsLimits.fixProblem("  ", "Caw") != null)
         assertTrue(SettingsLimits.fixProblem("car", " ") != null)
         assertEquals("car app", SettingsLimits.phrase("  Car   APP "))
+    }
+
+    // ---- v4: shortcuts ----
+
+    @Test
+    fun keyCarriesModsOnlyWhenThereAreSome() {
+        JSONObject(Protocol.key(5, "enter", 1, listOf("super"))).let {
+            assertEquals("enter", it.getString("key"))
+            assertEquals(listOf("super"), List(it.getJSONArray("mods").length()) { i -> it.getJSONArray("mods").getString(i) })
+            assertEquals(1, it.getInt("count"))
+        }
+        assertFalse(JSONObject(Protocol.key(6, "backspace", 1)).has("mods"))
+        assertFalse(JSONObject(Protocol.key(7, "page_up", 1, emptyList())).has("mods"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun unknownModIsRefused() {
+        Protocol.key(1, "t", 1, listOf("hyper"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun modTwiceIsRefused() {
+        Protocol.key(1, "t", 1, listOf("ctrl", "ctrl"))
+    }
+
+    @Test
+    fun extendedKeysAreKnown() {
+        for (k in listOf("a", "z", "0", "9", "f1", "f12", "space", "page_up", "page_down", "insert", "minus", "equal",
+            "comma", "period", "slash", "semicolon", "apostrophe", "bracket_left", "bracket_right", "backslash", "grave")) {
+            assertTrue(k, k in Protocol.KEYS)
+        }
+    }
+
+    @Test
+    fun settingsCarryShortcutsInOrder() {
+        val m = Protocol.parse("""{"type":"settings","id":4,"desktop_name":"omarchy","shortcuts":[""" +
+            """{"name":"Terminal","key":"enter","mods":["super"]},{"name":"Bad","key":"f13","mods":[]},""" +
+            """{"name":"Refresh","key":"f5"}]}""") as Protocol.Incoming.Settings
+        // The one this phone cannot send is left out; no mods reads as none.
+        assertEquals(listOf(Shortcut("Terminal", "enter", listOf("super")), Shortcut("Refresh", "f5")), m.settings.shortcuts)
+        // An older desktop sends no shortcuts at all: null, not empty.
+        assertEquals(null, (Protocol.parse("""{"type":"settings","id":5,"desktop_name":"omarchy"}""") as Protocol.Incoming.Settings).settings.shortcuts)
+        assertEquals(emptyList<Shortcut>(), (Protocol.parse("""{"type":"settings","id":6,"desktop_name":"omarchy","shortcuts":[]}""") as Protocol.Incoming.Settings).settings.shortcuts)
+    }
+
+    @Test
+    fun settingsSetSendsTheWholeShortcutList() {
+        val list = listOf(Shortcut("Terminal", "enter", listOf("super")), Shortcut("New tab", "t", listOf("ctrl", "shift")))
+        JSONObject(Protocol.settingsSet(11, SettingsChange(shortcuts = list))).let {
+            val a = it.getJSONArray("shortcuts")
+            assertEquals(2, a.length())
+            assertEquals("Terminal", a.getJSONObject(0).getString("name"))
+            assertEquals("t", a.getJSONObject(1).getString("key"))
+            assertEquals(2, a.getJSONObject(1).getJSONArray("mods").length())
+            assertFalse(it.has("word_fixes"))
+        }
+        assertEquals(0, JSONObject(Protocol.settingsSet(12, SettingsChange(shortcuts = emptyList()))).getJSONArray("shortcuts").length())
+        assertFalse(JSONObject(Protocol.settingsSet(13, SettingsChange(pointerSpeed = 2.0))).has("shortcuts"))
+    }
+
+    @Test
+    fun shortcutLimits() {
+        val one = Shortcut("Terminal", "enter", listOf("super"))
+        assertEquals(null, SettingsLimits.problem(SettingsChange(shortcuts = List(48) { one })))
+        assertTrue(SettingsLimits.problem(SettingsChange(shortcuts = List(49) { one })) != null)
+        assertTrue(SettingsLimits.problem(SettingsChange(shortcuts = listOf(one.copy(name = "   ")))) != null)
+        assertEquals(null, SettingsLimits.problem(SettingsChange(shortcuts = listOf(one.copy(name = " " + "x".repeat(30) + " ")))))
+        assertTrue(SettingsLimits.problem(SettingsChange(shortcuts = listOf(one.copy(name = "x".repeat(31))))) != null)
+        assertTrue(SettingsLimits.problem(SettingsChange(shortcuts = listOf(one.copy(key = "f13")))) != null)
+        assertEquals(null, SettingsLimits.shortcutProblem(" Terminal "))
+        assertTrue(SettingsLimits.shortcutProblem("") != null)
     }
 }

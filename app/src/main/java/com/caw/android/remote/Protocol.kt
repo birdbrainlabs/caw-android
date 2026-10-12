@@ -1,15 +1,16 @@
 package com.caw.android.remote
 
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 
 /** Caw Remote Protocol messages (caw-desktop's PROTOCOL.md). Each is one JSON object per line. */
 object Protocol {
-    /** `hello` says v3 (v2 touchpad messages, v3 settings); the desktop accepts v1, v2 and v3. */
-    const val VERSION = 3
+    /** `hello` says v4 (v2 touchpad messages, v3 settings, v4 shortcuts); the desktop accepts v1 to v4. */
+    const val VERSION = 4
 
-    /** `pair_request` stays at v1: pairing did not change in v2 or v3. */
+    /** `pair_request` stays at v1: pairing did not change in v2, v3 or v4. */
     const val PAIR_VERSION = 1
 
     /** The desktop's `error` reason (v2, once per connection, no id) when it cannot move the mouse. */
@@ -18,8 +19,14 @@ object Protocol {
     /** Mouse buttons a `click` may name (v2). */
     val BUTTONS = setOf("left", "right", "middle")
 
-    /** The special keys a `key` message may name. */
-    val KEYS = setOf("backspace", "delete", "enter", "tab", "escape", "left", "right", "up", "down", "home", "end")
+    /** The keys a `key` message may name: the v1 special keys, and since v4 letters, digits, F-keys and more. */
+    val KEYS: Set<String> = linkedSetOf("backspace", "delete", "enter", "tab", "escape", "left", "right", "up", "down", "home", "end") +
+        ('a'..'z').map { it.toString() } + ('0'..'9').map { it.toString() } + (1..12).map { "f$it" } +
+        listOf("space", "page_up", "page_down", "insert", "minus", "equal", "comma", "period", "slash", "semicolon",
+            "apostrophe", "bracket_left", "bracket_right", "backslash", "grave")
+
+    /** The modifiers a v4 `key` may hold, in the order the desktop presses them. */
+    val MODS = listOf("super", "ctrl", "alt", "shift")
 
     fun pairRequest(deviceId: String, deviceName: String, proof: String): String = JSONObject()
         .put("type", "pair_request").put("v", PAIR_VERSION).put("device_id", deviceId)
@@ -35,9 +42,16 @@ object Protocol {
     fun text(id: Long, text: String): String =
         JSONObject().put("type", "text").put("id", id).put("text", text).toString()
 
-    fun key(id: Long, key: String, count: Int): String {
+    /**
+     * [mods] (v4) are left out when empty, so Backspace and Enter read as they did in v3. Only send
+     * mods to a desktop whose settings have `shortcuts`: an older one would press the bare key.
+     */
+    fun key(id: Long, key: String, count: Int, mods: List<String> = emptyList()): String {
         require(key in KEYS) { "unknown key $key" }
-        return JSONObject().put("type", "key").put("id", id).put("key", key).put("count", count).toString()
+        require(mods.all { it in MODS } && mods.distinct().size == mods.size) { "bad mods $mods" }
+        val o = JSONObject().put("type", "key").put("id", id).put("key", key)
+        if (mods.isNotEmpty()) o.put("mods", JSONArray(mods))
+        return o.put("count", count).toString()
     }
 
     // ---- v2: touchpad. No id, no ack, never queued (a late mouse move is worse than a lost one). ----
@@ -71,7 +85,7 @@ object Protocol {
 
     fun settingsGet(id: Long): String = JSONObject().put("type", "settings_get").put("id", id).toString()
 
-    /** Only the fields of [change] that are set; `word_fixes` is the WHOLE list (it replaces the computer's). */
+    /** Only the fields of [change] that are set; `word_fixes` and `shortcuts` are WHOLE lists (they replace the computer's). */
     fun settingsSet(id: Long, change: SettingsChange): String {
         val o = JSONObject().put("type", "settings_set").put("id", id)
         change.wordFixes?.let { fixes ->
@@ -81,6 +95,7 @@ object Protocol {
         }
         change.pointerSpeed?.let { o.put("pointer_speed", it) }
         change.pointerAccel?.let { o.put("pointer_accel", it) }
+        change.shortcuts?.let { o.put("shortcuts", Shortcut.listToJson(it)) }
         return o.toString()
     }
 
@@ -123,7 +138,10 @@ object Protocol {
         }
     }
 
-    /** A `settings` reply; missing speed / acceleration read as the desktop's defaults. */
+    /**
+     * A `settings` reply; missing speed / acceleration read as the desktop's defaults. No `shortcuts`
+     * means a desktop older than v4 (null): the phone then shows no shortcut buttons.
+     */
     private fun settings(o: JSONObject): DesktopSettings {
         val fixes = LinkedHashMap<String, String>()
         o.optJSONObject("word_fixes")?.let { m ->
@@ -135,6 +153,7 @@ object Protocol {
             wordFixes = fixes,
             pointerSpeed = o.optDouble("pointer_speed", SettingsLimits.SPEED_DEFAULT),
             pointerAccel = o.optDouble("pointer_accel", SettingsLimits.ACCEL_DEFAULT),
+            shortcuts = o.optJSONArray("shortcuts")?.let { Shortcut.listFromJson(it) },
         )
     }
 }

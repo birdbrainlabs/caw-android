@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Caw's main screen (DictationActivity): transcript, Copy / Clear, status, Crumb, computer.
+<!-- Caw's main screen (DictationActivity): transcript or shortcuts, Copy / Clear, status, Crumb, computer.
      No ScrollView around Crumb: a scrolling parent would take a moving finger and end the hold. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -33,6 +33,54 @@
                 android:textIsSelectable="true"
                 android:textSize="18sp" />
         </ScrollView>
+
+        <!-- Send to computer on: the transcript gives way to the last text sent and the computer's
+             shortcut buttons (rows of R.integer.shortcut_columns, added at runtime). -->
+        <LinearLayout
+            android:id="@+id/shortcut_panel"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/sent_line"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.8"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:textColor="@color/caw_text"
+                android:textSize="14sp" />
+
+            <ScrollView
+                android:id="@+id/shortcut_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:id="@+id/shortcut_grid"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </ScrollView>
+
+            <TextView
+                android:id="@+id/shortcuts_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.7"
+                android:gravity="center"
+                android:text="@string/dictation_shortcuts_empty"
+                android:textColor="@color/caw_text"
+                android:textSize="15sp"
+                android:visibility="gone" />
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"

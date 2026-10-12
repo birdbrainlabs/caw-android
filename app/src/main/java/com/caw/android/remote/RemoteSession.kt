@@ -242,6 +242,19 @@ class RemoteSession(
         return w.write(line)
     }
 
+    /**
+     * v4: presses [shortcut] once (`key` with its mods, count 1), on the normal id sequence. Written
+     * only while ready and never queued or sent again, so a stale Super+Enter cannot fire later.
+     * Returns its id, or null when nothing was sent. Its `ack` is not tracked; an `error` still
+     * reaches [Listener.onRejected] (with no item).
+     */
+    fun sendShortcut(shortcut: Shortcut): Long? {
+        val w = wire ?: return null
+        if (phase != Phase.READY) return null
+        val id = outbox.takeId()
+        return if (w.write(Protocol.key(id, shortcut.key, 1, shortcut.mods))) id else null
+    }
+
     private fun queue(payload: Outbox.Payload): Outbox.Item {
         val item = outbox.add(payload)
         flush()

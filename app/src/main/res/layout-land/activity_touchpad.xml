@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- TouchpadActivity on its side: the touch area on the left, the hold column on the right.
+<!-- TouchpadActivity on its side: the shortcuts over the touch area on the left, the hold column on the right.
      Same ids as layout/activity_touchpad.xml. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -13,24 +13,48 @@
         android:orientation="horizontal"
         android:padding="12dp">
 
-        <FrameLayout
-            android:id="@+id/touch_area"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:background="@drawable/transcript_background">
+            android:orientation="vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <!-- The computer's shortcut buttons (layout/shortcut_button.xml, added at runtime), one finger high.
+                 Gone while it has none. -->
+            <HorizontalScrollView
+                android:id="@+id/shortcut_scroll"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:gravity="center"
-                android:lineSpacingExtra="4dp"
-                android:padding="24dp"
-                android:text="@string/touchpad_hint"
-                android:textColor="#80F2F4F7"
-                android:textSize="15sp" />
-        </FrameLayout>
+                android:layout_marginBottom="8dp"
+                android:scrollbars="none"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/shortcut_row"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal" />
+            </HorizontalScrollView>
+
+            <FrameLayout
+                android:id="@+id/touch_area"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@drawable/transcript_background">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:lineSpacingExtra="4dp"
+                    android:padding="24dp"
+                    android:text="@string/touchpad_hint"
+                    android:textColor="#80F2F4F7"
+                    android:textSize="15sp" />
+            </FrameLayout>
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="240dp"

@@ -124,10 +124,10 @@ class RemoteSessionTest {
     }
 
     @Test
-    fun helloSaysV3() {
+    fun helloSaysV4() {
         val w = FakeWire()
         session.attach(w, 0)
-        assertEquals(3, JSONObject(w.lines[0]).getInt("v"))
+        assertEquals(4, JSONObject(w.lines[0]).getInt("v"))
     }
 
     @Test
@@ -418,5 +418,56 @@ class RemoteSessionTest {
         val w2 = FakeWire()
         ready(w2)
         assertEquals(listOf("hello"), w2.types())
+    }
+
+    // ---- v4: shortcuts ----
+
+    private val terminal = Shortcut("Terminal", "enter", listOf("super"))
+
+    @Test
+    fun shortcutIsNotSentOrQueuedBeforeReady() {
+        assertNull(session.sendShortcut(terminal))
+        val w = FakeWire()
+        session.attach(w, 0)
+        assertNull(session.sendShortcut(terminal))
+        assertEquals(0, session.outbox.size)
+        session.onLine("""{"type":"hello_ok","desktop_name":"omarchy"}""", 0)
+        // Nothing went out late on hello_ok.
+        assertEquals(listOf("hello"), w.types())
+    }
+
+    @Test
+    fun shortcutUsesTheIdSequenceAndIsNeverResent() {
+        val w = FakeWire()
+        ready(w)
+        val text = session.sendText("hi ")
+        val id = session.sendShortcut(terminal)
+        assertEquals(text.id + 1, id)
+        val key = w.sent("key").single()
+        assertEquals(id, key.getLong("id"))
+        assertEquals("enter", key.getString("key"))
+        assertEquals("super", key.getJSONArray("mods").getString(0))
+        assertEquals(1, key.getInt("count"))
+        assertEquals(1, session.outbox.size) // only the text waits for its ack
+        // The connection drops before any ack: the text goes again, the shortcut does not.
+        session.detach()
+        val w2 = FakeWire()
+        ready(w2)
+        assertEquals(listOf("hello", "text"), w2.types())
+        // A late ack for it is ignored; an error says so, with no item.
+        events.clear()
+        session.onLine("""{"type":"ack","id":$id}""", 1)
+        assertEquals(emptyList<String>(), events)
+        session.onLine("""{"type":"error","id":$id,"reason":"unknown_key"}""", 1)
+        assertEquals(listOf("rejected null unknown_key"), events)
+    }
+
+    @Test
+    fun shortcutWriteFailureReportsNotSent() {
+        val w = FakeWire()
+        ready(w)
+        w.failWrites = true
+        assertNull(session.sendShortcut(terminal))
+        assertEquals(0, session.outbox.size)
     }
 }

@@ -14,11 +14,13 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import com.caw.android.dictation.Dictation
 import com.caw.android.remote.RemoteLink
 import com.caw.android.remote.RemoteStore
+import com.caw.android.remote.Shortcut
 import com.caw.android.session.Status
 import com.caw.android.session.StatusKind
 import com.caw.android.speech.SpeechEngine
@@ -26,6 +28,7 @@ import com.caw.android.touchpad.TouchGestures
 import com.caw.android.touchpad.TouchpadScreen
 import com.caw.android.ui.CrumbHost
 import com.caw.android.ui.CrumbView
+import com.caw.android.ui.ShortcutButtons
 
 /**
  * The paired computer's touchpad, opened from the dictation screen's
@@ -34,7 +37,8 @@ import com.caw.android.ui.CrumbView
  * under it is the same hold-to-talk as everywhere (the shared [Dictation]); the finished text goes
  * to the computer, with Backspace and Enter next to him. While a hold runs the touch area is
  * ignored. The screen stays on while this is open, and Caw stays connected even with Send to
- * computer off. Back leaves it.
+ * computer off. Back leaves it. The computer's shortcut buttons (protocol v4), if it has any, run
+ * along the top in one scrolling row.
  */
 class TouchpadActivity : Activity(), TouchpadScreen.View, RemoteLink.Observer {
 
@@ -46,6 +50,10 @@ class TouchpadActivity : Activity(), TouchpadScreen.View, RemoteLink.Observer {
     private lateinit var touchArea: View
     private lateinit var crumbSlot: ViewGroup
     private lateinit var spinner: ProgressBar
+    private lateinit var shortcutScroll: View
+    private lateinit var shortcutRow: LinearLayout
+    /** The shortcuts the row shows (rebuilt only when they change). */
+    private var shownShortcuts: List<Shortcut>? = null
     private var crumb: CrumbView? = null
     private lateinit var gestures: TouchGestures
 
@@ -68,6 +76,8 @@ class TouchpadActivity : Activity(), TouchpadScreen.View, RemoteLink.Observer {
         touchArea = findViewById(R.id.touch_area)
         crumbSlot = findViewById(R.id.crumb_slot)
         spinner = findViewById(R.id.spinner)
+        shortcutScroll = findViewById(R.id.shortcut_scroll)
+        shortcutRow = findViewById(R.id.shortcut_row)
 
         gestures = TouchGestures(resources.displayMetrics.density, object : TouchGestures.Output {
             override fun move(dx: Double, dy: Double) = RemoteLink.sendMove(dx, dy)
@@ -187,6 +197,30 @@ class TouchpadActivity : Activity(), TouchpadScreen.View, RemoteLink.Observer {
 
     override fun onState(state: RemoteLink.State) {
         show(linkView, Status.touchpadLink(state.desktop?.name, state.connected, state.pointerUnavailable))
+        renderShortcuts(state.shortcuts.takeIf { state.desktop != null }.orEmpty())
+    }
+
+    /** One slim row, a finger high; gone while the computer has no shortcuts. */
+    private fun renderShortcuts(list: List<Shortcut>) {
+        shortcutScroll.visibility = if (list.isEmpty()) View.GONE else View.VISIBLE
+        if (list == shownShortcuts) return
+        shownShortcuts = list
+        shortcutRow.removeAllViews()
+        val density = resources.displayMetrics.density
+        for ((i, s) in list.withIndex()) {
+            val b = ShortcutButtons.make(layoutInflater, shortcutRow, s, ::shortcutNotSent)
+            b.minHeight = (48 * density).toInt()
+            b.maxLines = 1
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            if (i > 0) lp.marginStart = (8 * density).toInt()
+            shortcutRow.addView(b, lp)
+        }
+    }
+
+    /** A shortcut tapped while the computer is not connected: never sent later, so say so. */
+    private fun shortcutNotSent() {
+        if (Dictation.activeFor(screen)) return
+        screen.showStatus(Status.notConnected(RemoteLink.state.desktop?.name ?: "the computer", 0))
     }
 
     override fun onRejected(reason: String) {

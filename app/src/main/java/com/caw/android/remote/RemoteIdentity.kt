@@ -125,7 +125,16 @@ class RemoteStore(context: Context) {
     }
 
     fun forget() {
-        prefs.edit().remove(ID).remove(NAME).remove(FP).remove(HOST).remove(PORT).putBoolean(ENABLED, false).apply()
+        prefs.edit().remove(ID).remove(NAME).remove(FP).remove(HOST).remove(PORT).putBoolean(ENABLED, false)
+            .remove(SHORTCUTS_FOR).remove(SHORTCUTS).apply()
+    }
+
+    /** The shortcut cache ([ShortcutCache]) for the computer [desktopId]; null when none is kept for it. */
+    fun shortcuts(desktopId: String): List<Shortcut>? =
+        if (prefs.getString(SHORTCUTS_FOR, null) == desktopId) ShortcutCache.decode(prefs.getString(SHORTCUTS, null)) else null
+
+    fun saveShortcuts(desktopId: String, shortcuts: List<Shortcut>?) {
+        prefs.edit().putString(SHORTCUTS_FOR, desktopId).putString(SHORTCUTS, ShortcutCache.encode(shortcuts)).apply()
     }
 
     /** The "Send to computer" switch. On by default; pairing turns it on again (RemoteLink.pairNow). */
@@ -153,5 +162,7 @@ class RemoteStore(context: Context) {
         const val PORT = "desktop_port"
         const val ENABLED = "send_to_computer"
         const val NATURAL_SCROLLING = "natural_scrolling"
+        const val SHORTCUTS_FOR = "shortcuts_desktop_id"
+        const val SHORTCUTS = "shortcuts"
     }
 }

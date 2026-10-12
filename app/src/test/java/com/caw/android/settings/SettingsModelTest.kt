@@ -1,6 +1,7 @@
 package com.caw.android.settings
 
 import com.caw.android.remote.DesktopSettings
+import com.caw.android.remote.Shortcut
 import com.caw.android.settings.SettingsModel.ComputerLine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -66,5 +67,23 @@ class SettingsModelTest {
         assertEquals("1.5", SettingsModel.speedText(1.5))
         assertEquals("0.05", SettingsModel.accelText(0.05))
         assertEquals("10.0", SettingsModel.speedText(10.0))
+    }
+
+    @Test
+    fun shortcutsAddEditDeleteMove() {
+        val term = Shortcut("Terminal", "enter", listOf("super"))
+        val tab = Shortcut("New tab", "t", listOf("ctrl", "shift"))
+        // Added at the end; the name trimmed and the mods put in the desktop's order.
+        val added = SettingsModel.withShortcut(listOf(term), null, Shortcut("  New tab ", "t", listOf("shift", "ctrl")))
+        assertEquals(listOf(term, tab), added)
+        // Edited in place.
+        val edited = SettingsModel.withShortcut(added, 0, term.copy(name = "Shell"))
+        assertEquals(listOf(term.copy(name = "Shell"), tab), edited)
+        assertEquals(listOf(tab), SettingsModel.withoutShortcut(added, 0))
+        assertEquals(listOf(tab, term), SettingsModel.moved(added, 0, +1))
+        assertEquals(listOf(tab, term), SettingsModel.moved(added, 1, -1))
+        // Unchanged at either end.
+        assertEquals(added, SettingsModel.moved(added, 0, -1))
+        assertEquals(added, SettingsModel.moved(added, 1, +1))
     }
 }

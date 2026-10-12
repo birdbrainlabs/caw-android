@@ -74,6 +74,11 @@ object RemoteLink {
         val problem: String?,
         /** The computer said `pointer_unavailable` on this connection: it cannot move its mouse. */
         val pointerUnavailable: Boolean = false,
+        /**
+         * The paired computer's shortcut buttons (v4), as last read from it and kept in prefs so they
+         * show before Caw connects; null when its Caw Desktop has none (older) or nothing is known yet.
+         */
+        val shortcuts: List<Shortcut>? = null,
     ) {
         /** Finished text goes to the computer instead of the phone's field. */
         val sending: Boolean get() = enabled && desktop != null
@@ -122,6 +127,7 @@ object RemoteLink {
     private var connection = Connection.OFF
     private var problem: String? = null
     private var pointerUnavailable = false
+    private var shortcuts: List<Shortcut>? = null
     private var session: RemoteSession? = null
     private var conn: Conn? = null
     private val policy = ReconnectPolicy()
@@ -135,6 +141,10 @@ object RemoteLink {
     private var ipv4LookupFor: String? = null
     /** Settings requests waiting for their answer: id -> callback (called on the main thread). */
     private val settingsCallbacks = HashMap<Long, (SettingsReply) -> Unit>()
+    /** The `settings_get` sent after each `hello_ok` to refresh the shortcut cache: an `error` means no shortcuts. */
+    private val shortcutProbes = HashSet<Long>()
+    /** `settings_set`s carrying shortcuts: id -> the list, cached once the computer acknowledges it. */
+    private val shortcutSets = HashMap<Long, List<Shortcut>>()
     private val movesLog = DeltaLog("pointer_move")
     private val scrollsLog = DeltaLog("scroll")
     private var pointerLogFlush: ScheduledFuture<*>? = null
@@ -151,10 +161,12 @@ object RemoteLink {
             control = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "CawRemote").apply { isDaemon = true } }
         }
         val d = store.desktop()
-        state = State(d, store.enabled && d != null, Connection.OFF, 0, null)
+        val cached = d?.let { store.shortcuts(it.id) }
+        state = State(d, store.enabled && d != null, Connection.OFF, 0, null, shortcuts = cached)
         control.execute {
             desktop = d
             enabled = store.enabled && d != null
+            shortcuts = cached
             ensure()
         }
         // Wi-Fi back: try at once instead of waiting out the backoff.
@@ -191,6 +203,7 @@ object RemoteLink {
         desktop = null
         resolvedHosts = emptyList()
         enabled = false
+        shortcuts = null
         session?.outbox?.clear()
         closeConn("forgotten")
         cancelRetry()
@@ -217,6 +230,17 @@ object RemoteLink {
 
     fun sendKey(key: String, count: Int = 1) = control.execute {
         withSession { it.sendKey(key, count) }
+    }
+
+    /**
+     * Presses [shortcut] on the computer. Never queued: [done] (main thread) gets false when it is
+     * not connected, and nothing is sent later.
+     */
+    fun sendShortcut(shortcut: Shortcut, done: (Boolean) -> Unit) = control.execute {
+        val id = if (conn != null) session?.sendShortcut(shortcut) else null
+        // The name is the owner's own word; the combo says what was pressed.
+        Log.i(TAG, if (id != null) "sent shortcut ${ShortcutKeys.combo(shortcut)} id $id" else "dropped shortcut ${ShortcutKeys.combo(shortcut)} (not connected)")
+        main.post { done(id != null) }
     }
 
     // ---- screens that keep the link up ----
@@ -262,8 +286,39 @@ object RemoteLink {
             change.wordFixes?.let { add("word_fixes: ${it.size}") }
             change.pointerSpeed?.let { add("pointer_speed: $it") }
             change.pointerAccel?.let { add("pointer_accel: $it") }
+            change.shortcuts?.let { add("shortcuts: ${it.size}") }
         }.joinToString(", ")
+        if (id != null) change.shortcuts?.let { shortcutSets[id] = it }
         track(id, "settings_set ($what)", done)
+    }
+
+    /** After `hello_ok`: reads the computer's settings to refresh the shortcut cache (and so the buttons). */
+    private fun probeShortcuts() {
+        if (conn == null) return
+        val id = session?.requestSettings(now()) ?: return
+        Log.i(TAG, "sent settings_get id $id (shortcuts)")
+        shortcutProbes += id
+        settingsCallbacks[id] = {}
+    }
+
+    /** Every settings answer refreshes the shortcut cache when it says something about the shortcuts. */
+    private fun noteShortcuts(id: Long, reply: SettingsReply) {
+        val probe = shortcutProbes.remove(id)
+        val set = shortcutSets.remove(id)
+        when {
+            reply is SettingsReply.Loaded -> keepShortcuts(reply.settings.shortcuts)
+            reply == SettingsReply.Saved && set != null -> keepShortcuts(set)
+            // A desktop older than v3 answers settings_get with error unknown_type: no shortcuts there.
+            reply is SettingsReply.Refused && probe -> keepShortcuts(null)
+        }
+    }
+
+    private fun keepShortcuts(list: List<Shortcut>?) {
+        val d = desktop ?: return
+        store.saveShortcuts(d.id, list)
+        if (list == shortcuts) return
+        shortcuts = list
+        publish()
     }
 
     private fun track(id: Long?, what: String, done: (SettingsReply) -> Unit) {
@@ -277,6 +332,7 @@ object RemoteLink {
     }
 
     private fun answer(id: Long, reply: SettingsReply) {
+        noteShortcuts(id, reply)
         val done = settingsCallbacks.remove(id) ?: return
         main.post { done(reply) }
     }
@@ -397,6 +453,9 @@ object RemoteLink {
                 // The switch went off while connecting: hello_ok proved the link; nothing to keep open.
                 closeConn("Send to computer is off")
                 connection = Connection.OFF
+            } else {
+                // After the queued messages, which go out as soon as this returns.
+                control.execute { probeShortcuts() }
             }
             publish()
         }
@@ -423,7 +482,8 @@ object RemoteLink {
         override fun onSettings(id: Long, settings: DesktopSettings) {
             // The word fixes themselves are not logged.
             Log.i(TAG, "settings $id: ${settings.desktopName} ${settings.desktopVersion}, ${settings.wordFixes.size} word fixes, " +
-                "pointer_speed ${settings.pointerSpeed}, pointer_accel ${settings.pointerAccel}")
+                "pointer_speed ${settings.pointerSpeed}, pointer_accel ${settings.pointerAccel}, " +
+                (settings.shortcuts?.let { "${it.size} shortcuts" } ?: "no shortcuts (older Caw Desktop)"))
             answer(id, SettingsReply.Loaded(settings))
         }
 
@@ -602,6 +662,7 @@ object RemoteLink {
                     if (desktop?.id != id) session?.outbox?.clear()
                     resolvedHosts = emptyList()
                     desktop = d
+                    shortcuts = store.shortcuts(id)
                     store.saveDesktop(d)
                     // Pairing means "send to this computer": the switch turns on (it can be turned off after).
                     enabled = true
@@ -709,7 +770,7 @@ object RemoteLink {
 
     private fun publish() {
         val d = desktop
-        val s = State(d, enabled && d != null, connection, session?.outbox?.size ?: 0, problem, pointerUnavailable)
+        val s = State(d, enabled && d != null, connection, session?.outbox?.size ?: 0, problem, pointerUnavailable, shortcuts)
         if (s == state) return
         state = s
         main.post { observers.forEach { it.onState(s) } }

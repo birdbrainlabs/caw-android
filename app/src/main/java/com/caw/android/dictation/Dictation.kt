@@ -58,11 +58,19 @@ object Dictation : HoldSession.Host {
         override val sending: Boolean get() = wanted()
 
         override fun send(text: String) {
+            lastSent = text.trim()
             RemoteLink.sendText(text)
             Log.i(TAG, "to computer: \"$text\"${if (RemoteLink.state.connected) "" else " (queued, not connected)"}")
             Log.i(TAG, "release-to-send ms: ${SystemClock.uptimeMillis() - releasedAt}")
         }
     }
+
+    /**
+     * The last text sent to the computer, from any screen or the pill (null until one is): the
+     * dictation screen shows it in place of the transcript while Send to computer is on.
+     */
+    var lastSent: String? = null
+        private set
 
     /** The shared "finished text -> computer" routing (see [FinishedText]), while Send to computer is on. */
     val finishedText = FinishedText(ToComputer { RemoteLink.state.sending })
