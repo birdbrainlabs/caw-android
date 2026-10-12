@@ -82,8 +82,8 @@ object Dictation : HoldSession.Host {
     val touchpadText = FinishedText(ToComputer { RemoteLink.state.desktop != null })
 
     /**
-     * Backspace / Enter for the paired computer (a `key` message, count 1), from the pill or the
-     * screen while Send to computer is on, or from the touchpad ([whenPaired]) whenever one is paired.
+     * Backspace / Enter (and the dictation screen's arrows) for the paired computer (a `key` message,
+     * count 1), from the pill or the screen while Send to computer is on, or from the touchpad ([whenPaired]) whenever one is paired.
      */
     fun sendKey(key: String, whenPaired: Boolean = false) {
         val ok = if (whenPaired) RemoteLink.state.desktop != null else RemoteLink.state.sending

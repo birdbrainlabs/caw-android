@@ -41,7 +41,7 @@
             </ScrollView>
 
             <!-- Send to computer on: the transcript gives way to the last text sent and the computer's
-                 shortcut buttons (rows of R.integer.shortcut_columns, added at runtime). -->
+                 key row and shortcut buttons (rows of R.integer.shortcut_columns, added at runtime). -->
             <LinearLayout
                 android:id="@+id/shortcut_panel"
                 android:layout_width="match_parent"
@@ -61,6 +61,9 @@
                     android:paddingEnd="4dp"
                     android:textColor="@color/caw_text"
                     android:textSize="14sp" />
+
+                <!-- ← ↑ ↓ → Backspace Enter, fixed above the scrolling grid. -->
+                <include layout="@layout/dictation_key_row" />
 
                 <ScrollView
                     android:id="@+id/shortcut_scroll"
@@ -160,26 +163,6 @@
                     android:indeterminateTint="@android:color/white"
                     android:visibility="gone" />
             </FrameLayout>
-
-            <LinearLayout
-                android:id="@+id/remote_keys"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:orientation="horizontal"
-                android:visibility="gone">
-
-                <TextView
-                    android:id="@+id/remote_backspace"
-                    style="@style/CawButton"
-                    android:text="@string/backspace_button" />
-
-                <TextView
-                    android:id="@+id/remote_enter"
-                    style="@style/CawButton"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/enter_button" />
-            </LinearLayout>
 
             <TextView
                 android:id="@+id/computer_row"

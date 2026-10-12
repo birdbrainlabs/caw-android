@@ -6,6 +6,14 @@
     <string name="keyboard_button">Keyboard</string>
     <string name="backspace_button">Backspace</string>
     <string name="enter_button">Enter</string>
+    <string name="arrow_left">←</string>
+    <string name="arrow_up">↑</string>
+    <string name="arrow_down">↓</string>
+    <string name="arrow_right">→</string>
+    <string name="arrow_left_description">Left arrow</string>
+    <string name="arrow_up_description">Up arrow</string>
+    <string name="arrow_down_description">Down arrow</string>
+    <string name="arrow_right_description">Right arrow</string>
     <string name="orb_idle">Hold to talk.</string>
     <string name="orb_listening">Listening. Let go to stop recording.</string>
     <string name="orb_finishing">Finishing the transcript.</string>

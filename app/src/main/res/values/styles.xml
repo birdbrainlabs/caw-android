@@ -14,4 +14,17 @@
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
     </style>
+
+    <!-- The dictation screen's fixed key row: shares the row by weight, so it fits a 360 dp phone;
+         the text shrinks rather than clipping at large font sizes. -->
+    <style name="CawKeyRowButton" parent="CawButton">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingEnd">4dp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:autoSizeTextType">uniform</item>
+        <item name="android:autoSizeMinTextSize">10sp</item>
+        <item name="android:autoSizeMaxTextSize">15sp</item>
+    </style>
 </resources>

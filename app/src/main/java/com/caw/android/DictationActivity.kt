@@ -30,13 +30,13 @@ import com.caw.android.ui.ShortcutButtons
  * into another app's text box). Hold Crumb (or volume-down) and talk; each finished hold is added
  * to the transcript, with the same timing, status words and spacing as the IME pill. Copy puts the
  * whole transcript on the clipboard, Clear empties it. While Send to computer is on, every finished
- * text also goes to the paired computer, and the computer's name, its connection and Backspace /
- * Enter keys show; the Computer row opens [ComputerActivity] to pair or switch it, Touchpad
+ * text also goes to the paired computer, and the computer's name, its connection and a key row
+ * (arrows, Backspace, Enter) show; the Computer row opens [ComputerActivity] to pair or switch it, Touchpad
  * opens [TouchpadActivity] for the paired computer, and Settings opens [SettingsActivity].
  *
  * While Send to computer is on, the transcript and Copy / Clear give way to one line with the last
- * text sent (so a mishearing can be seen) and the computer's shortcut buttons (protocol v4); the
- * transcript keeps filling underneath. A computer whose Caw Desktop has no shortcuts gets neither
+ * text sent (so a mishearing can be seen), the fixed key row and the computer's shortcut buttons
+ * (protocol v4); the transcript keeps filling underneath. A computer whose Caw Desktop has no shortcuts gets neither
  * grid nor hint.
  *
  * The hold is [Dictation]'s (shared with the IME); the transcript and status live in
@@ -54,7 +54,6 @@ class DictationActivity : Activity(), DictationScreen.View, RemoteLink.Observer 
     private lateinit var crumbSlot: ViewGroup
     private lateinit var spinner: ProgressBar
     private lateinit var computerRow: TextView
-    private lateinit var remoteKeys: View
     private lateinit var touchpadButton: View
     private lateinit var shortcutPanel: View
     private lateinit var sentLine: TextView
@@ -84,7 +83,6 @@ class DictationActivity : Activity(), DictationScreen.View, RemoteLink.Observer 
         crumbSlot = findViewById(R.id.crumb_slot)
         spinner = findViewById(R.id.spinner)
         computerRow = findViewById(R.id.computer_row)
-        remoteKeys = findViewById(R.id.remote_keys)
         touchpadButton = findViewById(R.id.touchpad)
         shortcutPanel = findViewById(R.id.shortcut_panel)
         sentLine = findViewById(R.id.sent_line)
@@ -103,8 +101,8 @@ class DictationActivity : Activity(), DictationScreen.View, RemoteLink.Observer 
             val target = if (RemoteLink.state.desktop != null) TouchpadActivity::class.java else ComputerActivity::class.java
             startActivity(Intent(this, target))
         }
-        findViewById<View>(R.id.remote_backspace).setOnClickListener { Dictation.sendKey("backspace") }
-        findViewById<View>(R.id.remote_enter).setOnClickListener { Dictation.sendKey("enter") }
+        // The key row (in the shortcut panel, so shown only while Send to computer is on).
+        for ((id, key) in KEY_ROW) findViewById<View>(id).setOnClickListener { Dictation.sendKey(key) }
     }
 
     override fun onStart() {
@@ -257,7 +255,6 @@ class DictationActivity : Activity(), DictationScreen.View, RemoteLink.Observer 
             state.waiting > 0 -> getString(R.string.dictation_computer_waiting, d.name, state.waiting)
             else -> getString(R.string.dictation_computer_away, d.name)
         }
-        remoteKeys.visibility = if (state.sending) View.VISIBLE else View.GONE
         touchpadButton.alpha = if (d != null) 1f else 0.4f
         renderShortcuts(state)
         screen.linkChanged()
@@ -315,5 +312,11 @@ class DictationActivity : Activity(), DictationScreen.View, RemoteLink.Observer 
 
     companion object {
         private const val KEY_TRANSCRIPT = "transcript"
+
+        /** The key row's buttons and the plain `key` each sends (all v1 keys, so any desktop takes them). */
+        private val KEY_ROW = listOf(
+            R.id.remote_left to "left", R.id.remote_up to "up", R.id.remote_down to "down", R.id.remote_right to "right",
+            R.id.remote_backspace to "backspace", R.id.remote_enter to "enter",
+        )
     }
 }

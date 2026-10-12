@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Send to computer on: the dictation screen's fixed keys for the paired computer, between the
+     "Sent:" line and the shortcut grid (included by both activity_dictation layouts). Never scrolls. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:orientation="horizontal"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+
+    <TextView
+        android:id="@+id/remote_left"
+        style="@style/CawKeyRowButton"
+        android:layout_weight="1"
+        android:contentDescription="@string/arrow_left_description"
+        android:text="@string/arrow_left" />
+
+    <TextView
+        android:id="@+id/remote_up"
+        style="@style/CawKeyRowButton"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1"
+        android:contentDescription="@string/arrow_up_description"
+        android:text="@string/arrow_up" />
+
+    <TextView
+        android:id="@+id/remote_down"
+        style="@style/CawKeyRowButton"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1"
+        android:contentDescription="@string/arrow_down_description"
+        android:text="@string/arrow_down" />
+
+    <TextView
+        android:id="@+id/remote_right"
+        style="@style/CawKeyRowButton"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1"
+        android:contentDescription="@string/arrow_right_description"
+        android:text="@string/arrow_right" />
+
+    <TextView
+        android:id="@+id/remote_backspace"
+        style="@style/CawKeyRowButton"
+        android:layout_marginStart="4dp"
+        android:layout_weight="2.4"
+        android:text="@string/backspace_button" />
+
+    <TextView
+        android:id="@+id/remote_enter"
+        style="@style/CawKeyRowButton"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1.6"
+        android:text="@string/enter_button" />
+</LinearLayout>
