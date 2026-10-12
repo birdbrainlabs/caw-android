@@ -17,9 +17,25 @@ android {
         ndk { abiFilters += listOf("arm64-v8a") }
     }
 
+    // Release signing key: kept outside the repo in ~/.config/caw-android/signing, its password passed in
+    // CAW_KEYSTORE_PASSWORD (scripts/release.sh reads it from the macOS Keychain). Without both, release
+    // builds come out unsigned.
+    val releaseKeystore = file("${System.getProperty("user.home")}/.config/caw-android/signing/caw-release.p12")
+    val keystorePassword = System.getenv("CAW_KEYSTORE_PASSWORD")
+    if (releaseKeystore.isFile && !keystorePassword.isNullOrEmpty()) {
+        signingConfigs.create("release") {
+            storeFile = releaseKeystore
+            storeType = "pkcs12"
+            storePassword = keystorePassword
+            keyAlias = "caw"
+            keyPassword = keystorePassword
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
@@ -33,9 +49,11 @@ android {
     }
 
     // The owner's own word list (word-fixes.personal.json) is bundled from outside the repo when that
-    // folder exists, so it never goes into git (docs/BUILD.md "Your own word list").
+    // folder exists, so it never goes into git (docs/BUILD.md "Your own word list"). -Pcaw.public leaves it
+    // out, for APKs other people download.
     val personalAssets = file("${System.getProperty("user.home")}/.config/caw-android/assets")
-    if (personalAssets.isDirectory) {
+    val publicBuild = providers.gradleProperty("caw.public").isPresent
+    if (personalAssets.isDirectory && !publicBuild) {
         sourceSets.getByName("main").assets.srcDir(personalAssets)
     }
 

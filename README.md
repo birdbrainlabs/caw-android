@@ -50,6 +50,31 @@ not treated as mistakes, and a hold can last up to 5 minutes.
   other request.
 - Caw never saves your recordings. Audio is turned into text and thrown away.
 
+## Install
+
+You don't have to build Caw to use it.
+
+1. On the phone, open the
+   [latest release](https://github.com/birdbrainlabs/caw-android/releases/latest)
+   and download `caw-android-<version>.apk` (about 310 MB, most of it the
+   speech model).
+2. Open the downloaded file. Android asks you to allow installs from your
+   browser or file manager the first time; allow it, then tap Install.
+3. Open Caw and hold Crumb.
+
+Or from a computer, with the phone connected over USB:
+
+    adb install caw-android-0.1.apk
+
+Every release is signed with the same key. Its certificate's SHA-256
+fingerprint is
+
+    25:4E:55:52:44:E3:B7:E3:FE:AA:12:DA:8E:D5:31:CB:17:8D:AB:FC:A4:12:46:F5:69:96:05:C1:6C:A2:C4:5F
+
+(`apksigner verify --print-certs caw-android-0.1.apk` shows it). Each release
+installs over the one before and keeps your settings and pairings. A copy of
+Caw you built yourself is signed differently: uninstall it first.
+
 ## Requirements
 
 - An arm64 Android phone running Android 10 (API 29) or later. The APK only
@@ -90,6 +115,9 @@ To use Caw from a keyboard, turn it on in Settings › System › Keyboard ›
 On-screen keyboard › Manage keyboards (the wording varies by phone), then tap
 HeliBoard's mic key. If the mic key does nothing, make sure only one voice
 input method is enabled; HeliBoard uses the first one it finds.
+
+`scripts/release.sh` builds the signed release APK. It needs the release key,
+which lives outside the repo, so it only works for the maintainer.
 
 `scripts/caw_desktop_stub.py` is a small test desktop for Send to computer and
 the touchpad: it prints what the phone sends and answers like Caw Desktop
