@@ -7,10 +7,10 @@ Speech recognition runs entirely on the phone with
 [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) and the Moonshine base
 English model. It needs no Google services and no network to dictate.
 
-Caw was built by someone whose speech standard dictation follows poorly: an accent,
-a mumble, pauses and restarts. It’s for anyone that describes, including people
-who stutter. Pauses, restarts and repeated sounds are expected,
-not treated as mistakes, and a hold can last up to 5 minutes.
+Caw was made by someone whose speech standard dictation doesn’t follow well: an
+accent, a mumble, a lot of stopping and starting. It’s for anyone whose speech
+gets lost the same way, including people who stutter. Pauses, restarts and
+repeated sounds are expected, not treated as mistakes, and a hold can last up to 5 minutes.
 
 ## What it does
 
