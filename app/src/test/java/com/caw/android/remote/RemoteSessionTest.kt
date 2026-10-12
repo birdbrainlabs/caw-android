@@ -81,6 +81,25 @@ class RemoteSessionTest {
     }
 
     @Test
+    fun helloCarriesTheSameSessionOnEveryConnection() {
+        val w1 = FakeWire()
+        session.attach(w1, 0)
+        session.detach()
+        val w2 = FakeWire()
+        session.attach(w2, 1_000)
+        val tag = JSONObject(w1.lines[0]).getString("session")
+        assertEquals(session.sessionTag, tag)
+        assertEquals(tag, JSONObject(w2.lines[0]).getString("session"))
+    }
+
+    @Test
+    fun sessionTagIs16HexAndNewEachAppStart() {
+        val a = RemoteSession.newSessionTag()
+        assertTrue(a.matches(Regex("[0-9a-f]{16}")))
+        assertTrue(a != RemoteSession("phone01", listener).sessionTag)
+    }
+
+    @Test
     fun helloOkMakesItReady() {
         val w = FakeWire()
         ready(w)

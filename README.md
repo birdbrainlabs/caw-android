@@ -64,14 +64,14 @@ You don't have to build Caw to use it.
 
 Or from a computer, with the phone connected over USB:
 
-    adb install caw-android-0.1.apk
+    adb install caw-android-0.2.apk
 
 Every release is signed with the same key. Its certificate's SHA-256
 fingerprint is
 
     25:4E:55:52:44:E3:B7:E3:FE:AA:12:DA:8E:D5:31:CB:17:8D:AB:FC:A4:12:46:F5:69:96:05:C1:6C:A2:C4:5F
 
-(`apksigner verify --print-certs caw-android-0.1.apk` shows it). Each release
+(`apksigner verify --print-certs caw-android-0.2.apk` shows it). Each release
 installs over the one before and keeps your settings and pairings. A copy of
 Caw you built yourself is signed differently: uninstall it first.
 

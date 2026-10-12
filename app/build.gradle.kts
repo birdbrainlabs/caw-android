@@ -11,8 +11,8 @@ android {
         applicationId = "com.caw.android"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1"
+        versionCode = 2
+        versionName = "0.2"
         // Phones are arm64. Keeps the APK from carrying four copies of onnxruntime.
         ndk { abiFilters += listOf("arm64-v8a") }
     }

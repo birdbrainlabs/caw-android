@@ -25,8 +25,12 @@ object Protocol {
         .put("type", "pair_request").put("v", PAIR_VERSION).put("device_id", deviceId)
         .put("device_name", deviceName).put("proof", proof).toString()
 
-    fun hello(deviceId: String): String =
-        JSONObject().put("type", "hello").put("v", VERSION).put("device_id", deviceId).toString()
+    /**
+     * [session] is made once per app start (RemoteSession.newSessionTag). Message ids restart at 1 with the
+     * app, so the desktop keys its resend check on it and new messages aren't taken for resends.
+     */
+    fun hello(deviceId: String, session: String): String = JSONObject()
+        .put("type", "hello").put("v", VERSION).put("device_id", deviceId).put("session", session).toString()
 
     fun text(id: Long, text: String): String =
         JSONObject().put("type", "text").put("id", id).put("text", text).toString()

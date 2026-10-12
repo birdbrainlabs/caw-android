@@ -1,5 +1,6 @@
 package com.caw.android.remote
 
+import java.security.SecureRandom
 import kotlin.math.min
 
 /**
@@ -109,7 +110,13 @@ class ReconnectPolicy(
  * answer (`settings`, `ack` or `error` with its id) and fails when the connection goes or after
  * [REQUEST_TIMEOUT_MS].
  */
-class RemoteSession(private val deviceId: String, private val listener: Listener, capacity: Int = 100) {
+class RemoteSession(
+    private val deviceId: String,
+    private val listener: Listener,
+    capacity: Int = 100,
+    /** Sent in every `hello`. Lives as long as this session (one per app start), like the outbox's ids. */
+    val sessionTag: String = newSessionTag(),
+) {
 
     interface Wire {
         /** One JSON line (no newline). Returns false if the write failed; the wire then closes itself. */
@@ -149,6 +156,10 @@ class RemoteSession(private val deviceId: String, private val listener: Listener
         const val SILENCE_MS = 45_000L
         const val HELLO_TIMEOUT_MS = 10_000L
         const val REQUEST_TIMEOUT_MS = 10_000L
+
+        /** 16 random hex digits. */
+        fun newSessionTag(): String =
+            ByteArray(8).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
     }
 
     val outbox = Outbox(capacity)
@@ -178,7 +189,7 @@ class RemoteSession(private val deviceId: String, private val listener: Listener
         lastHeard = now
         lastPing = now
         outbox.markAllUnsent()
-        wire.write(Protocol.hello(deviceId))
+        wire.write(Protocol.hello(deviceId, sessionTag))
     }
 
     /** The connection is gone. Unacknowledged items stay queued. */

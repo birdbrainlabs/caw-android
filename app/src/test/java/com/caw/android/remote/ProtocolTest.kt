@@ -81,10 +81,11 @@ class ProtocolTest {
             assertEquals("Test Phone", it.getString("device_name"))
             assertEquals("cHJvb2Y=", it.getString("proof"))
         }
-        JSONObject(Protocol.hello("ab12")).let {
+        JSONObject(Protocol.hello("ab12", "9f2c41d07ab3e655")).let {
             assertEquals("hello", it.getString("type"))
             assertEquals(3, it.getInt("v")) // v3: settings
             assertEquals("ab12", it.getString("device_id"))
+            assertEquals("9f2c41d07ab3e655", it.getString("session"))
         }
         JSONObject(Protocol.text(1, "Hello world. ")).let {
             assertEquals("text", it.getString("type"))
