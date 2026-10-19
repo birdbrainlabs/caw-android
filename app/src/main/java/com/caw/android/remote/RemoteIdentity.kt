@@ -101,40 +101,83 @@ internal class PinnedTrust(private val fingerprintHex: String) : X509TrustManage
     override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
 }
 
-/** The paired computer, as stored. */
+/** A paired computer, as stored. */
 data class PairedDesktop(val id: String, val name: String, val fingerprintHex: String, val host: String, val port: Int)
 
-/** Caw's remote settings in SharedPreferences "caw_remote". */
-class RemoteStore(context: Context) {
-    private val prefs: SharedPreferences = context.getSharedPreferences("caw_remote", Context.MODE_PRIVATE)
+/**
+ * Caw's remote settings in SharedPreferences "caw_remote". Every paired computer is kept
+ * ([desktops], [PairedDesktops] JSON, in pairing order); one of them is the active one, the only
+ * one Caw connects and sends to ([desktop]). Each computer has its own shortcut cache.
+ *
+ * Up to 0.3 the phone kept one computer in separate keys (desktop_id, desktop_name, …) and one
+ * shortcut cache; the first [RemoteStore] after the update moves them into the list, as the active
+ * computer ([migrate]), so a paired phone stays paired.
+ */
+class RemoteStore(private val prefs: SharedPreferences) {
 
+    constructor(context: Context) : this(context.getSharedPreferences("caw_remote", Context.MODE_PRIVATE))
+
+    init {
+        migrate()
+    }
+
+    /** Every paired computer, in the order they were first paired. */
+    fun desktops(): List<PairedDesktop> = PairedDesktops.decode(prefs.getString(DESKTOPS, null))
+
+    /** The active computer; null when none is paired or none is chosen. */
     fun desktop(): PairedDesktop? {
-        val fp = prefs.getString(FP, null) ?: return null
-        return PairedDesktop(
-            id = prefs.getString(ID, null) ?: return null,
-            name = prefs.getString(NAME, null) ?: "computer",
-            fingerprintHex = fp,
-            host = prefs.getString(HOST, null) ?: return null,
-            port = prefs.getInt(PORT, PairTarget.DEFAULT_PORT),
-        )
+        val id = prefs.getString(ACTIVE, null) ?: return null
+        return desktops().firstOrNull { it.id == id }
     }
 
+    /** Adds [d], or updates the computer with its id in place. Which computer is active does not change. */
     fun saveDesktop(d: PairedDesktop) {
-        prefs.edit().putString(ID, d.id).putString(NAME, d.name).putString(FP, d.fingerprintHex)
-            .putString(HOST, d.host).putInt(PORT, d.port).apply()
+        prefs.edit().putString(DESKTOPS, PairedDesktops.encode(PairedDesktops.with(desktops(), d))).apply()
     }
 
-    fun forget() {
-        prefs.edit().remove(ID).remove(NAME).remove(FP).remove(HOST).remove(PORT).putBoolean(ENABLED, false)
-            .remove(SHORTCUTS_FOR).remove(SHORTCUTS).apply()
+    /** Makes the computer [id] the active one; null: none. */
+    fun setActive(id: String?) {
+        prefs.edit().apply { if (id != null) putString(ACTIVE, id) else remove(ACTIVE) }.apply()
+    }
+
+    /**
+     * Forgets the computer [id] and its shortcut cache. If it was the active one, none is active
+     * now; with no computer left the switch goes off, as on a phone that was never paired.
+     */
+    fun remove(id: String) {
+        val left = PairedDesktops.without(desktops(), id)
+        val e = prefs.edit().putString(DESKTOPS, PairedDesktops.encode(left)).remove(SHORTCUTS_PREFIX + id)
+        if (prefs.getString(ACTIVE, null) == id) e.remove(ACTIVE)
+        if (left.isEmpty()) e.putBoolean(ENABLED, false)
+        e.apply()
     }
 
     /** The shortcut cache ([ShortcutCache]) for the computer [desktopId]; null when none is kept for it. */
-    fun shortcuts(desktopId: String): List<Shortcut>? =
-        if (prefs.getString(SHORTCUTS_FOR, null) == desktopId) ShortcutCache.decode(prefs.getString(SHORTCUTS, null)) else null
+    fun shortcuts(desktopId: String): List<Shortcut>? = ShortcutCache.decode(prefs.getString(SHORTCUTS_PREFIX + desktopId, null))
 
     fun saveShortcuts(desktopId: String, shortcuts: List<Shortcut>?) {
-        prefs.edit().putString(SHORTCUTS_FOR, desktopId).putString(SHORTCUTS, ShortcutCache.encode(shortcuts)).apply()
+        prefs.edit().putString(SHORTCUTS_PREFIX + desktopId, ShortcutCache.encode(shortcuts)).apply()
+    }
+
+    /** The 0.3 keys (one computer) into the list, once: that computer becomes the first, active entry. */
+    private fun migrate() {
+        if (prefs.contains(DESKTOPS)) return
+        val e = prefs.edit()
+        val id = prefs.getString(OLD_ID, null)
+        val fp = prefs.getString(OLD_FP, null)
+        val host = prefs.getString(OLD_HOST, null)
+        if (id != null && fp != null && host != null) {
+            val d = PairedDesktop(id, prefs.getString(OLD_NAME, null) ?: "computer", fp, host, prefs.getInt(OLD_PORT, PairTarget.DEFAULT_PORT))
+            e.putString(DESKTOPS, PairedDesktops.encode(listOf(d))).putString(ACTIVE, id)
+            // 0.3 kept one cache, marked with the computer it was for.
+            if (prefs.getString(OLD_SHORTCUTS_FOR, null) == id) {
+                prefs.getString(OLD_SHORTCUTS, null)?.let { e.putString(SHORTCUTS_PREFIX + id, it) }
+            }
+        } else {
+            e.putString(DESKTOPS, PairedDesktops.encode(emptyList()))
+        }
+        e.remove(OLD_ID).remove(OLD_NAME).remove(OLD_FP).remove(OLD_HOST).remove(OLD_PORT)
+            .remove(OLD_SHORTCUTS_FOR).remove(OLD_SHORTCUTS).apply()
     }
 
     /** The "Send to computer" switch. On by default; pairing turns it on again (RemoteLink.pairNow). */
@@ -146,7 +189,7 @@ class RemoteStore(context: Context) {
 
     /**
      * Natural scrolling on the touchpad (phone-only; the Settings screen's switch). On by default.
-     * Kept when the computer is forgotten.
+     * Kept when a computer is removed.
      */
     var naturalScrolling: Boolean
         get() = prefs.getBoolean(NATURAL_SCROLLING, true)
@@ -155,14 +198,20 @@ class RemoteStore(context: Context) {
         }
 
     private companion object {
-        const val ID = "desktop_id"
-        const val NAME = "desktop_name"
-        const val FP = "desktop_fingerprint"
-        const val HOST = "desktop_host"
-        const val PORT = "desktop_port"
+        const val DESKTOPS = "desktops"
+        const val ACTIVE = "active_desktop_id"
         const val ENABLED = "send_to_computer"
         const val NATURAL_SCROLLING = "natural_scrolling"
-        const val SHORTCUTS_FOR = "shortcuts_desktop_id"
-        const val SHORTCUTS = "shortcuts"
+        /** + the computer's id: its shortcut cache. */
+        const val SHORTCUTS_PREFIX = "shortcuts:"
+
+        // Up to 0.3 (one computer); read once by migrate().
+        const val OLD_ID = "desktop_id"
+        const val OLD_NAME = "desktop_name"
+        const val OLD_FP = "desktop_fingerprint"
+        const val OLD_HOST = "desktop_host"
+        const val OLD_PORT = "desktop_port"
+        const val OLD_SHORTCUTS_FOR = "shortcuts_desktop_id"
+        const val OLD_SHORTCUTS = "shortcuts"
     }
 }

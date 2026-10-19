@@ -17,11 +17,11 @@ object SettingsModel {
     enum class ComputerLine {
         /** "No computer paired. Set one up on the Computer screen." */
         NOT_PAIRED,
-        /** "Not connected to omarchy" (editors disabled). */
+        /** "Not connected to Desk" (editors disabled). */
         NOT_CONNECTED,
         /** "Loading settings…" */
         LOADING,
-        /** "omarchy · Caw Desktop 0.1.0" */
+        /** "Desk · Caw Desktop 0.1.0" */
         LOADED,
         /** Connected, but the settings did not come (the status line says why). */
         NOT_LOADED,

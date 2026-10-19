@@ -68,7 +68,7 @@ class RemoteSessionTest {
 
     private fun ready(wire: FakeWire, now: Long = 0) {
         session.attach(wire, now)
-        session.onLine("""{"type":"hello_ok","desktop_name":"omarchy"}""", now)
+        session.onLine("""{"type":"hello_ok","desktop_name":"Desk"}""", now)
     }
 
     @Test
@@ -104,8 +104,8 @@ class RemoteSessionTest {
         val w = FakeWire()
         ready(w)
         assertEquals(RemoteSession.Phase.READY, session.phase)
-        assertEquals("omarchy", session.desktopName)
-        assertTrue("ready omarchy" in events)
+        assertEquals("Desk", session.desktopName)
+        assertTrue("ready Desk" in events)
     }
 
     @Test
@@ -138,7 +138,7 @@ class RemoteSessionTest {
         session.attach(w, 0)
         // Connected but before hello_ok: dropped too.
         assertFalse(session.sendUnqueued(Protocol.click("left")))
-        session.onLine("""{"type":"hello_ok","desktop_name":"omarchy"}""", 1)
+        session.onLine("""{"type":"hello_ok","desktop_name":"Desk"}""", 1)
         assertEquals(listOf("hello"), w.types())
         assertTrue(session.sendUnqueued(Protocol.pointerMove(1.0, 2.0)))
         assertTrue(session.sendUnqueued(Protocol.scroll(0.0, 12.0)))
@@ -197,7 +197,7 @@ class RemoteSessionTest {
         session.attach(w, 100)
         // Nothing but hello until the desktop says hello_ok.
         assertEquals(listOf("hello"), w.types())
-        session.onLine("""{"type":"hello_ok","desktop_name":"omarchy"}""", 110)
+        session.onLine("""{"type":"hello_ok","desktop_name":"Desk"}""", 110)
         assertEquals(listOf("hello", "text", "key", "text"), w.types())
         assertEquals(listOf("Waiting one. ", "Waiting two. "), w.sent("text").map { it.getString("text") })
         assertEquals(listOf(1L, 2L, 3L), w.lines.drop(1).map { JSONObject(it).getLong("id") })
@@ -362,7 +362,7 @@ class RemoteSessionTest {
         val w = FakeWire()
         session.attach(w, 0)
         assertNull(session.changeSettings(SettingsChange(pointerSpeed = 2.0), 0))
-        session.onLine("""{"type":"hello_ok","desktop_name":"omarchy"}""", 0)
+        session.onLine("""{"type":"hello_ok","desktop_name":"Desk"}""", 0)
         assertEquals(listOf("hello"), w.types())
         assertEquals(0, session.outbox.size)
         assertEquals(0, session.pendingRequests)
@@ -374,10 +374,10 @@ class RemoteSessionTest {
         ready(w)
         val id = session.requestSettings(0)!!
         assertEquals(id, w.sent("settings_get")[0].getLong("id"))
-        session.onLine("""{"type":"settings","id":$id,"desktop_name":"omarchy","desktop_version":"0.1.0","word_fixes":{"car app":"Caw app"},"pointer_speed":1.5,"pointer_accel":0.05}""", 1)
-        assertEquals(listOf("ready omarchy", "settings $id omarchy 1"), events)
+        session.onLine("""{"type":"settings","id":$id,"desktop_name":"Desk","desktop_version":"0.1.0","word_fixes":{"car app":"Caw app"},"pointer_speed":1.5,"pointer_accel":0.05}""", 1)
+        assertEquals(listOf("ready Desk", "settings $id Desk 1"), events)
         // A second answer to the same id (or one nobody asked for) is ignored.
-        session.onLine("""{"type":"settings","id":$id,"desktop_name":"omarchy"}""", 2)
+        session.onLine("""{"type":"settings","id":$id,"desktop_name":"Desk"}""", 2)
         assertEquals(2, events.size)
     }
 
@@ -431,7 +431,7 @@ class RemoteSessionTest {
         session.attach(w, 0)
         assertNull(session.sendShortcut(terminal))
         assertEquals(0, session.outbox.size)
-        session.onLine("""{"type":"hello_ok","desktop_name":"omarchy"}""", 0)
+        session.onLine("""{"type":"hello_ok","desktop_name":"Desk"}""", 0)
         // Nothing went out late on hello_ok.
         assertEquals(listOf("hello"), w.types())
     }

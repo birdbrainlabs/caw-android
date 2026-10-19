@@ -30,7 +30,7 @@
                 android:orientation="horizontal" />
         </HorizontalScrollView>
 
-        <!-- Connected to omarchy / Reconnecting to omarchy… / can't move the mouse. -->
+        <!-- Connected to Desk / Reconnecting to Desk… / can't move the mouse. -->
         <TextView
             android:id="@+id/link"
             android:layout_width="match_parent"

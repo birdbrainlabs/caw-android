@@ -27,7 +27,9 @@ repeated sounds are expected, not treated as mistakes, and a hold can last up to
   Windows, a separate download), Caw can type your dictation on the computer
   instead, with Backspace and Enter buttons.
   Pairing is by QR code or a typed code; the connection is TLS 1.3 on your
-  local network, with both sides pinned by certificate fingerprint.
+  local network, with both sides pinned by certificate fingerprint. The phone
+  remembers every computer you pair; you pick the one to send to on the
+  Computer screen.
 - **Touchpad.** The phone can move the paired computer's mouse: one finger
   moves, tap clicks, two fingers scroll, a two-finger tap right-clicks, press
   and hold to drag.
@@ -46,7 +48,7 @@ repeated sounds are expected, not treated as mistakes, and a hold can last up to
 ## Private by design
 
 - Dictation never leaves the phone. The only network use is Send to computer
-  and the touchpad, and only to the computer you paired.
+  and the touchpad, and only to a computer you paired.
 - No accounts, no analytics, no Google Play services.
 - Crumb's page is served from the app's own files; the WebView blocks every
   other request.

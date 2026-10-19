@@ -17,7 +17,7 @@ class AddressOrderTest {
         assertEquals(Family.V6, AddressOrder.family("fe80::1%23"))
         assertEquals(Family.V6, AddressOrder.family("[2001:db8::1]"))
         assertEquals(Family.V6, AddressOrder.family("::ffff:192.168.1.20"))
-        assertEquals(Family.NAME, AddressOrder.family("omarchy.local"))
+        assertEquals(Family.NAME, AddressOrder.family("Desk.local"))
         assertEquals(Family.NAME, AddressOrder.family("1.2.3"))
     }
 
@@ -31,8 +31,8 @@ class AddressOrderTest {
 
     @Test
     fun ipv4ThenNamesThenIpv6EachOnce() {
-        val got = AddressOrder.candidates(linkLocal, listOf("2001:db8::5", "192.168.1.50", "omarchy.local", "FE80::1C2B:3AFF:FE4D:5E6F%wlan0", "192.168.1.50"))
-        assertEquals(listOf("192.168.1.50", "omarchy.local", linkLocal, "2001:db8::5"), got)
+        val got = AddressOrder.candidates(linkLocal, listOf("2001:db8::5", "192.168.1.50", "Desk.local", "FE80::1C2B:3AFF:FE4D:5E6F%wlan0", "192.168.1.50"))
+        assertEquals(listOf("192.168.1.50", "Desk.local", linkLocal, "2001:db8::5"), got)
     }
 
     @Test
@@ -55,7 +55,7 @@ class AddressOrderTest {
         // Only IPv6 known: the lookup's first.
         assertEquals("2001:db8::5", AddressOrder.toStore(linkLocal, listOf("2001:db8::5")))
         // A name typed when pairing stays.
-        assertEquals("omarchy.local", AddressOrder.toStore("omarchy.local", listOf(v4)))
+        assertEquals("Desk.local", AddressOrder.toStore("Desk.local", listOf(v4)))
         // Nothing found: keep what is stored.
         assertEquals(v4, AddressOrder.toStore(v4, emptyList()))
     }
@@ -66,6 +66,6 @@ class AddressOrderTest {
         assertEquals("192.168.1.99", AddressOrder.afterSuccess(v4, "192.168.1.99"))
         assertNull(AddressOrder.afterSuccess(v4, v4))
         assertNull(AddressOrder.afterSuccess(v4, linkLocal))
-        assertNull(AddressOrder.afterSuccess("omarchy.local", v4))
+        assertNull(AddressOrder.afterSuccess("Desk.local", v4))
     }
 }

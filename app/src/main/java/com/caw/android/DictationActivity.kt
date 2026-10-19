@@ -31,7 +31,7 @@ import com.caw.android.ui.ShortcutButtons
  * to the transcript, with the same timing, status words and spacing as the IME pill. Copy puts the
  * whole transcript on the clipboard, Clear empties it. While Send to computer is on, every finished
  * text also goes to the paired computer, and the computer's name, its connection and a key row
- * (arrows, Backspace, Enter) show; the Computer row opens [ComputerActivity] to pair or switch it, Touchpad
+ * (arrows, Backspace, Enter) show; the Computer row opens [ComputerActivity] to pick, add or remove computers, Touchpad
  * opens [TouchpadActivity] for the paired computer, and Settings opens [SettingsActivity].
  *
  * While Send to computer is on, the transcript and Copy / Clear give way to one line with the last
@@ -251,6 +251,7 @@ class DictationActivity : Activity(), DictationScreen.View, RemoteLink.Observer 
     override fun onState(state: RemoteLink.State) {
         val d = state.desktop
         computerRow.text = when {
+            d == null && state.desktops.isNotEmpty() -> getString(R.string.dictation_computer_choose)
             d == null -> getString(R.string.dictation_computer_none)
             !state.enabled -> getString(R.string.dictation_computer_off, d.name)
             state.connected -> getString(R.string.dictation_computer_connected, d.name)

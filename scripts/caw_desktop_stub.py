@@ -34,7 +34,12 @@ What it does:
 - Advertises _caw._tcp with `dns-sd -R` (macOS) or `avahi-publish-service` (Linux) when present.
 
 Options: --port N, --name NAME, --code CODE (fixed pairing code, for tests), --no-pairing,
---no-mdns, --pair-seconds N, --no-pointer, --v3.
+--no-mdns, --pair-seconds N, --no-pointer, --v3, --home DIR.
+
+Two computers (the phone remembers several and the user picks one): run a second stub with its own
+identity in another folder and on another port, e.g.
+
+    uv run --python 3.12 scripts/caw_desktop_stub.py --name Lab --port 47821 --home /tmp/caw-stub-lab
 """
 
 import argparse
@@ -621,9 +626,15 @@ def main():
     ap.add_argument("--no-pointer", action="store_true",
                     help="answer touchpad messages with error pointer_unavailable (once per connection)")
     ap.add_argument("--v3", action="store_true", help="leave shortcuts out of settings, as a desktop older than v4")
+    ap.add_argument("--home", help="keep the key, certificate, trusted phones and QR in this folder instead of next to "
+                                   "this file: a second stub with its own identity (a second computer)")
     args = ap.parse_args()
-    global OLD_V3
+    global OLD_V3, KEY_FILE, CERT_FILE, TRUSTED_FILE, QR_FILE
     OLD_V3 = args.v3
+    if args.home:
+        os.makedirs(args.home, exist_ok=True)
+        KEY_FILE, CERT_FILE, TRUSTED_FILE, QR_FILE = (
+            os.path.join(args.home, os.path.basename(f)) for f in (KEY_FILE, CERT_FILE, TRUSTED_FILE, QR_FILE))
 
     ensure_identity()
     ctx = server_context()

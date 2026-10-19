@@ -38,8 +38,8 @@ data class Status(val text: String, val kind: StatusKind) {
         )
 
         /**
-         * The ready text, plain or with the paired computer: "Sending to omarchy — hold to talk"
-         * while connected, "Not connected to omarchy — N messages waiting" while away. Both the
+         * The ready text, plain or with the paired computer: "Sending to Desk — hold to talk"
+         * while connected, "Not connected to Desk — N messages waiting" while away. Both the
          * IME pill and the dictation screen show this.
          */
         fun readyFor(computer: String?, sending: Boolean, connected: Boolean, waiting: Int): Status = when {

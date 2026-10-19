@@ -2,29 +2,37 @@ package com.caw.android
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.TextView
 import com.caw.android.remote.PairTarget
+import com.caw.android.remote.PairedDesktop
+import com.caw.android.remote.PairedDesktops
 import com.caw.android.remote.PairingCode
 import com.caw.android.remote.RemoteLink
 import com.google.zxing.integration.android.IntentIntegrator
 
 /**
- * "Send to computer", opened from the dictation screen's Computer row ([DictationActivity]). Pairs with Caw Desktop by QR code or by typing the
- * address and code, shows the paired computer and whether it is connected, and holds the switch
- * that sends dictation to the computer as well (dictation screen) or instead of the phone's field (IME).
+ * "Send to computer", opened from the dictation screen's Computer row ([DictationActivity]). Lists
+ * the paired computers (tap one to make it the active one, the one Caw sends to; Remove forgets
+ * one), adds a computer by pairing with Caw Desktop by QR code or by typing the address and code,
+ * shows whether the active one is connected, and holds the switch that sends dictation to the
+ * computer as well (dictation screen) or instead of the phone's field (IME).
  */
 class ComputerActivity : Activity(), RemoteLink.Observer {
 
     private lateinit var stateView: TextView
     private lateinit var sendSwitch: Switch
-    private lateinit var forget: Button
+    private lateinit var computersTitle: View
+    private lateinit var computers: LinearLayout
     private lateinit var host: EditText
     private lateinit var port: EditText
     private lateinit var code: EditText
@@ -32,6 +40,9 @@ class ComputerActivity : Activity(), RemoteLink.Observer {
     private lateinit var result: TextView
     private var pairing = false
     private var settingSwitch = false
+    private var dialog: AlertDialog? = null
+    /** What the computer rows show (rebuilt only when it changes, so a tap is not lost to a rebuild). */
+    private var shownRows: Any? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +50,8 @@ class ComputerActivity : Activity(), RemoteLink.Observer {
         RemoteLink.init(this)
         stateView = findViewById(R.id.state)
         sendSwitch = findViewById(R.id.send_switch)
-        forget = findViewById(R.id.forget)
+        computersTitle = findViewById(R.id.computers_title)
+        computers = findViewById(R.id.computers)
         host = findViewById(R.id.host)
         port = findViewById(R.id.port)
         code = findViewById(R.id.code)
@@ -47,10 +59,6 @@ class ComputerActivity : Activity(), RemoteLink.Observer {
         result = findViewById(R.id.result)
 
         sendSwitch.setOnCheckedChangeListener { _, on -> if (!settingSwitch) RemoteLink.setEnabled(on) }
-        forget.setOnClickListener {
-            RemoteLink.forget()
-            result.text = ""
-        }
         findViewById<View>(R.id.scan).setOnClickListener { scan() }
         pairButton.setOnClickListener { pairFromForm() }
     }
@@ -62,6 +70,8 @@ class ComputerActivity : Activity(), RemoteLink.Observer {
     }
 
     override fun onStop() {
+        dialog?.dismiss()
+        dialog = null
         RemoteLink.removeObserver(this)
         super.onStop()
     }
@@ -69,6 +79,7 @@ class ComputerActivity : Activity(), RemoteLink.Observer {
     override fun onState(state: RemoteLink.State) {
         val d = state.desktop
         stateView.text = when {
+            d == null && state.desktops.isNotEmpty() -> "Choose a computer."
             d == null -> "No computer paired."
             !state.enabled -> "Paired with ${d.name} (${d.host}:${d.port}). Send to computer is off."
             state.connected -> "Paired with ${d.name}: connected (${d.host}:${d.port})."
@@ -80,7 +91,63 @@ class ComputerActivity : Activity(), RemoteLink.Observer {
         sendSwitch.isChecked = state.enabled
         settingSwitch = false
         sendSwitch.isEnabled = d != null
-        forget.visibility = if (d != null) View.VISIBLE else View.GONE
+        renderComputers(state)
+    }
+
+    // ---- the paired computers ----
+
+    private fun renderComputers(state: RemoteLink.State) {
+        val rows = Triple(state.desktops, state.desktop?.id, state.connection)
+        if (rows == shownRows) return
+        shownRows = rows
+        computersTitle.visibility = if (state.desktops.isEmpty()) View.GONE else View.VISIBLE
+        computers.removeAllViews()
+        for (d in state.desktops) {
+            val row = layoutInflater.inflate(R.layout.computer_row, computers, false)
+            val label = PairedDesktops.label(d, state.desktops)
+            val active = d.id == state.desktop?.id
+            val name = row.findViewById<TextView>(R.id.computer_name)
+            val status = row.findViewById<TextView>(R.id.computer_status)
+            val pick = row.findViewById<View>(R.id.computer_pick)
+            name.text = if (active) getString(R.string.computer_active_name, label) else label
+            name.typeface = if (active) Typeface.create("sans-serif-medium", Typeface.NORMAL) else Typeface.DEFAULT
+            if (active) {
+                val connection = getString(when (state.connection) {
+                    RemoteLink.Connection.CONNECTED -> R.string.computer_connected
+                    RemoteLink.Connection.CONNECTING -> R.string.computer_connecting
+                    else -> R.string.computer_not_connected
+                })
+                status.text = connection
+                pick.contentDescription = getString(R.string.computer_active_description, label, connection)
+            } else {
+                status.visibility = View.GONE
+                pick.contentDescription = getString(R.string.computer_other_description, label)
+            }
+            // The user always picks: tapping a computer is the only way it becomes the active one.
+            pick.setOnClickListener {
+                if (!active) {
+                    RemoteLink.select(d.id)
+                    result.text = ""
+                }
+            }
+            row.findViewById<View>(R.id.computer_remove).setOnClickListener { confirmRemove(d, label) }
+            computers.addView(row)
+        }
+    }
+
+    private fun confirmRemove(d: PairedDesktop, label: String) {
+        val dlg = AlertDialog.Builder(this)
+            .setTitle(getString(R.string.computer_remove_title, label))
+            .setMessage(R.string.computer_remove_help)
+            .setPositiveButton(R.string.computer_remove) { _, _ ->
+                RemoteLink.remove(d.id)
+                result.text = ""
+            }
+            .setNegativeButton(R.string.settings_cancel, null)
+            .create()
+        dlg.setOnDismissListener { if (dialog === dlg) dialog = null }
+        dialog = dlg
+        dlg.show()
     }
 
     // ---- pairing ----

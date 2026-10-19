@@ -161,11 +161,11 @@ class ProtocolTest {
     @Test
     fun incomingMessages() {
         assertEquals(
-            Protocol.Incoming.PairOk("d1ca", "omarchy", "cHJvb2Y="),
-            Protocol.parse("""{"type":"pair_ok","desktop_id":"d1ca","desktop_name":"omarchy","proof":"cHJvb2Y="}"""),
+            Protocol.Incoming.PairOk("d1ca", "Desk", "cHJvb2Y="),
+            Protocol.parse("""{"type":"pair_ok","desktop_id":"d1ca","desktop_name":"Desk","proof":"cHJvb2Y="}"""),
         )
         assertEquals(Protocol.Incoming.PairError("bad_code"), Protocol.parse("""{"type":"pair_error","reason":"bad_code"}"""))
-        assertEquals(Protocol.Incoming.HelloOk("omarchy"), Protocol.parse("""{"type":"hello_ok","desktop_name":"omarchy"}"""))
+        assertEquals(Protocol.Incoming.HelloOk("Desk"), Protocol.parse("""{"type":"hello_ok","desktop_name":"Desk"}"""))
         assertEquals(Protocol.Incoming.Ack(7), Protocol.parse("""{"type":"ack","id":7}"""))
         assertEquals(Protocol.Incoming.Error(7, "no_focus"), Protocol.parse("""{"type":"error","id":7,"reason":"no_focus"}"""))
         assertEquals(Protocol.Incoming.Error(null, "unknown_type"), Protocol.parse("""{"type":"error","reason":"unknown_type"}"""))
@@ -209,12 +209,12 @@ class ProtocolTest {
 
     @Test
     fun parsesSettings() {
-        val m = Protocol.parse("""{"type":"settings","id":7,"desktop_name":"omarchy","desktop_version":"0.1.0",""" +
+        val m = Protocol.parse("""{"type":"settings","id":7,"desktop_name":"Desk","desktop_version":"0.1.0",""" +
             """"word_fixes":{"car app":"Caw app"},"pointer_speed":1.5,"pointer_accel":0.05}""")
         assertTrue(m is Protocol.Incoming.Settings)
         m as Protocol.Incoming.Settings
         assertEquals(7L, m.id)
-        assertEquals("omarchy", m.settings.desktopName)
+        assertEquals("Desk", m.settings.desktopName)
         assertEquals("0.1.0", m.settings.desktopVersion)
         assertEquals(mapOf("car app" to "Caw app"), m.settings.wordFixes)
         assertEquals(1.5, m.settings.pointerSpeed, 0.0)
@@ -223,7 +223,7 @@ class ProtocolTest {
 
     @Test
     fun settingsWithFieldsMissingUseTheDefaults() {
-        val m = Protocol.parse("""{"type":"settings","id":3,"desktop_name":"omarchy"}""") as Protocol.Incoming.Settings
+        val m = Protocol.parse("""{"type":"settings","id":3,"desktop_name":"Desk"}""") as Protocol.Incoming.Settings
         assertEquals(null, m.settings.desktopVersion)
         assertTrue(m.settings.wordFixes.isEmpty())
         assertEquals(SettingsLimits.SPEED_DEFAULT, m.settings.pointerSpeed, 0.0)
@@ -283,14 +283,14 @@ class ProtocolTest {
 
     @Test
     fun settingsCarryShortcutsInOrder() {
-        val m = Protocol.parse("""{"type":"settings","id":4,"desktop_name":"omarchy","shortcuts":[""" +
+        val m = Protocol.parse("""{"type":"settings","id":4,"desktop_name":"Desk","shortcuts":[""" +
             """{"name":"Terminal","key":"enter","mods":["super"]},{"name":"Bad","key":"f13","mods":[]},""" +
             """{"name":"Refresh","key":"f5"}]}""") as Protocol.Incoming.Settings
         // The one this phone cannot send is left out; no mods reads as none.
         assertEquals(listOf(Shortcut("Terminal", "enter", listOf("super")), Shortcut("Refresh", "f5")), m.settings.shortcuts)
         // An older desktop sends no shortcuts at all: null, not empty.
-        assertEquals(null, (Protocol.parse("""{"type":"settings","id":5,"desktop_name":"omarchy"}""") as Protocol.Incoming.Settings).settings.shortcuts)
-        assertEquals(emptyList<Shortcut>(), (Protocol.parse("""{"type":"settings","id":6,"desktop_name":"omarchy","shortcuts":[]}""") as Protocol.Incoming.Settings).settings.shortcuts)
+        assertEquals(null, (Protocol.parse("""{"type":"settings","id":5,"desktop_name":"Desk"}""") as Protocol.Incoming.Settings).settings.shortcuts)
+        assertEquals(emptyList<Shortcut>(), (Protocol.parse("""{"type":"settings","id":6,"desktop_name":"Desk","shortcuts":[]}""") as Protocol.Incoming.Settings).settings.shortcuts)
     }
 
     @Test

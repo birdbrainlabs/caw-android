@@ -10,7 +10,7 @@ import org.junit.Test
 
 class SettingsModelTest {
 
-    private val loaded = DesktopSettings("omarchy", "0.1.0", mapOf("car app" to "Caw app"), 1.5, 0.05)
+    private val loaded = DesktopSettings("Desk", "0.1.0", mapOf("car app" to "Caw app"), 1.5, 0.05)
 
     @Test
     fun computerLine() {

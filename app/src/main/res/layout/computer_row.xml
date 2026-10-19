@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One paired computer on the Computer screen: tap it to make it the active one; Remove forgets it (after asking). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <LinearLayout
+        android:id="@+id/computer_pick"
+        style="@style/CawButton"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical|start"
+        android:orientation="vertical"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
+
+        <TextView
+            android:id="@+id/computer_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/caw_text"
+            android:textSize="16sp" />
+
+        <!-- The active computer's connection; gone on the others. -->
+        <TextView
+            android:id="@+id/computer_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:textColor="@color/caw_text"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/computer_remove"
+        style="@style/CawButton"
+        android:layout_marginStart="8dp"
+        android:text="@string/computer_remove" />
+</LinearLayout>

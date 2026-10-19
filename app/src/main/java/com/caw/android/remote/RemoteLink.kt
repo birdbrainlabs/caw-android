@@ -36,6 +36,10 @@ import javax.net.ssl.X509TrustManager
  * "Send to computer": the connection to the paired Caw Desktop (caw-desktop's PROTOCOL.md).
  * One per process, shared by the input method and [com.caw.android.ComputerActivity].
  *
+ * The phone remembers every computer it paired with ([RemoteStore]); the user picks the active one
+ * ([select]), and only that one is connected and sent to. Switching closes the old connection and
+ * drops what was queued for it: text meant for one computer never goes to another.
+ *
  * Threads: everything that touches the socket or [RemoteSession] runs on the "CawRemote" thread;
  * each connection has its own reader thread that only hands lines over. Observers are called on
  * the main thread. While the switch is on and a computer is paired, it stays connected: pings
@@ -64,6 +68,7 @@ object RemoteLink {
     enum class Connection { OFF, CONNECTING, CONNECTED, WAITING }
 
     data class State(
+        /** The active computer: the one Caw connects and sends to. Null when none is paired or chosen. */
         val desktop: PairedDesktop?,
         /** The "Send to computer" switch (only ever true while paired). */
         val enabled: Boolean,
@@ -79,6 +84,8 @@ object RemoteLink {
          * show before Caw connects; null when its Caw Desktop has none (older) or nothing is known yet.
          */
         val shortcuts: List<Shortcut>? = null,
+        /** Every paired computer, in pairing order (the active one among them). */
+        val desktops: List<PairedDesktop> = emptyList(),
     ) {
         /** Finished text goes to the computer instead of the phone's field. */
         val sending: Boolean get() = enabled && desktop != null
@@ -123,6 +130,7 @@ object RemoteLink {
 
     // ---- CawRemote thread only ----
     private var desktop: PairedDesktop? = null
+    private var paired: List<PairedDesktop> = emptyList()
     private var enabled = false
     private var connection = Connection.OFF
     private var problem: String? = null
@@ -160,11 +168,13 @@ object RemoteLink {
             store = RemoteStore(app)
             control = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "CawRemote").apply { isDaemon = true } }
         }
+        val all = store.desktops()
         val d = store.desktop()
         val cached = d?.let { store.shortcuts(it.id) }
-        state = State(d, store.enabled && d != null, Connection.OFF, 0, null, shortcuts = cached)
+        state = State(d, store.enabled && d != null, Connection.OFF, 0, null, shortcuts = cached, desktops = all)
         control.execute {
             desktop = d
+            paired = all
             enabled = store.enabled && d != null
             shortcuts = cached
             ensure()
@@ -198,18 +208,58 @@ object RemoteLink {
         publish()
     }
 
-    fun forget() = control.execute {
-        store.forget()
-        desktop = null
-        resolvedHosts = emptyList()
-        enabled = false
-        shortcuts = null
-        session?.outbox?.clear()
-        closeConn("forgotten")
-        cancelRetry()
-        problem = null
+    /**
+     * Makes the paired computer [id] the active one: the old one is disconnected, what was queued
+     * for it is dropped, and Caw connects to [id]. The switch keeps its setting.
+     */
+    fun select(id: String) = control.execute {
+        val d = paired.firstOrNull { it.id == id } ?: return@execute
+        if (desktop?.id == id) return@execute
+        Log.i(TAG, "switching to ${d.name} ($id)" + (desktop?.let { " from ${it.name}" } ?: ""))
+        leaveActive("switching to ${d.name}")
+        desktop = d
+        store.setActive(id)
+        shortcuts = store.shortcuts(id)
+        enabled = store.enabled
         ensure()
         publish()
+    }
+
+    /**
+     * Forgets the paired computer [id]. If it was the active one, none is active until the user
+     * picks one; with none left the phone is as it was before any pairing (the switch off).
+     */
+    fun remove(id: String) = control.execute {
+        store.remove(id)
+        paired = store.desktops()
+        Log.i(TAG, "removed computer $id; ${paired.size} left")
+        if (desktop?.id == id) {
+            leaveActive("removed")
+            desktop = null
+            shortcuts = null
+            enabled = false
+        }
+        ensure()
+        publish()
+    }
+
+    /** Closes the active computer's connection and drops what was queued for it (switching or removing it). */
+    private fun leaveActive(reason: String) {
+        session?.outbox?.clear()
+        closeConn(reason)
+        cancelRetry()
+        connection = Connection.OFF
+        resolvedHosts = emptyList()
+        problem = null
+        pointerUnavailable = false
+        policy.reset()
+    }
+
+    /** [d] (the active computer) changed: its name, address or port. */
+    private fun keepDesktop(d: PairedDesktop) {
+        desktop = d
+        store.saveDesktop(d)
+        paired = PairedDesktops.with(paired, d)
     }
 
     /** Try to connect now (Caw was shown, the network came back). */
@@ -445,7 +495,7 @@ object RemoteLink {
             connection = Connection.CONNECTED
             val d = desktop
             if (d != null && desktopName.isNotBlank() && desktopName != d.name) {
-                desktop = d.copy(name = desktopName).also { store.saveDesktop(it) }
+                keepDesktop(d.copy(name = desktopName))
             }
             Log.i(TAG, "connected to $desktopName")
             desktop?.let { findIpv4Later(it) }
@@ -523,7 +573,7 @@ object RemoteLink {
             }
             AddressOrder.afterSuccess(d.host, host)?.let { better ->
                 Log.i(TAG, "storing $better for ${d.name} (was ${d.host})")
-                desktop = d.copy(host = better).also { store.saveDesktop(it) }
+                keepDesktop(d.copy(host = better))
             }
             start(socket, LineFramer())
             return
@@ -546,7 +596,7 @@ object RemoteLink {
                 val tried = failures.map { it.first }.toSet()
                 val news = AddressOrder.candidates(keep, found.hosts).filter { it !in tried }
                 if (keep != d.host || found.port != d.port) {
-                    desktop = d.copy(host = keep, port = found.port).also { store.saveDesktop(it) }
+                    keepDesktop(d.copy(host = keep, port = found.port))
                 }
                 Log.i(TAG, "found ${d.name} at ${found.hosts} port ${found.port}; stored ${desktop?.host}")
                 if (news.isNotEmpty() || found.port != d.port) {
@@ -574,7 +624,7 @@ object RemoteLink {
                 resolvedHosts = found.hosts
                 val keep = AddressOrder.toStore(now.host, found.hosts)
                 Log.i(TAG, "background lookup: ${d.name} at ${found.hosts}; stored $keep")
-                if (keep != now.host) desktop = now.copy(host = keep).also { store.saveDesktop(it) }
+                if (keep != now.host) keepDesktop(now.copy(host = keep))
             }
         }, "CawRemoteFind").apply { isDaemon = true }.start()
     }
@@ -659,11 +709,14 @@ object RemoteLink {
                     }
                     val name = m.desktopName.ifBlank { nameHint?.takeIf { it.isNotBlank() } ?: host }
                     val d = PairedDesktop(id, name, PairProof.hex(desktopFp), host, port)
+                    // A new computer is added (one paired before is updated) and becomes the active one;
+                    // text queued for another computer is dropped.
                     if (desktop?.id != id) session?.outbox?.clear()
                     resolvedHosts = emptyList()
-                    desktop = d
+                    pointerUnavailable = false
+                    keepDesktop(d)
+                    store.setActive(id)
                     shortcuts = store.shortcuts(id)
-                    store.saveDesktop(d)
                     // Pairing means "send to this computer": the switch turns on (it can be turned off after).
                     enabled = true
                     store.enabled = true
@@ -770,7 +823,7 @@ object RemoteLink {
 
     private fun publish() {
         val d = desktop
-        val s = State(d, enabled && d != null, connection, session?.outbox?.size ?: 0, problem, pointerUnavailable, shortcuts)
+        val s = State(d, enabled && d != null, connection, session?.outbox?.size ?: 0, problem, pointerUnavailable, shortcuts, paired)
         if (s == state) return
         state = s
         main.post { observers.forEach { it.onState(s) } }

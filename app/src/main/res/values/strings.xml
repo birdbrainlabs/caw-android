@@ -27,6 +27,7 @@
     <string name="dictation_clear">Clear</string>
     <string name="dictation_clip_label">Caw transcript</string>
     <string name="dictation_computer_none">Computer: not paired. Tap to set up.</string>
+    <string name="dictation_computer_choose">Choose a computer. Tap to pick one.</string>
     <string name="dictation_computer_off">Computer: %1$s. Send to computer is off.</string>
     <string name="dictation_computer_connected">Sending to %1$s: connected</string>
     <string name="dictation_computer_away">Sending to %1$s: not connected</string>
@@ -46,8 +47,17 @@
     <string name="computer_title">Send to computer</string>
     <string name="computer_switch">Send to computer</string>
     <string name="computer_switch_help">When this is on, what you dictate is typed on the paired computer. On Caw\'s own screen it is also kept in the transcript; from Caw\'s pill in another app the phone\'s text box is left alone. Both show the computer\'s name and Backspace and Enter buttons for it.</string>
-    <string name="computer_forget">Forget computer</string>
-    <string name="computer_pair_title">Pair a computer</string>
+    <string name="computer_list_title">Computers</string>
+    <string name="computer_active_name">✓ %1$s</string>
+    <string name="computer_connected">Connected</string>
+    <string name="computer_connecting">Connecting…</string>
+    <string name="computer_not_connected">Not connected</string>
+    <string name="computer_active_description">%1$s, sending here, %2$s</string>
+    <string name="computer_other_description">%1$s. Tap to send to it.</string>
+    <string name="computer_remove">Remove</string>
+    <string name="computer_remove_title">Remove %1$s?</string>
+    <string name="computer_remove_help">Caw forgets this computer. To send to it again, pair it again.</string>
+    <string name="computer_pair_title">Add a computer</string>
     <string name="computer_pair_help">Start pairing on the computer (Caw Desktop). It shows a QR code and a code for two minutes.</string>
     <string name="computer_scan">Scan QR</string>
     <string name="computer_or_type">Or type what the computer shows:</string>
@@ -61,6 +71,7 @@
          natural scrolling is kept on the phone. -->
     <string name="settings_title">Settings</string>
     <string name="settings_not_paired">No computer paired. Set one up on the Computer screen.</string>
+    <string name="settings_not_chosen">No computer chosen. Choose one on the Computer screen.</string>
     <string name="settings_not_connected">Not connected to %1$s</string>
     <string name="settings_loading">Loading settings…</string>
     <string name="settings_computer">%1$s · Caw Desktop %2$s</string>

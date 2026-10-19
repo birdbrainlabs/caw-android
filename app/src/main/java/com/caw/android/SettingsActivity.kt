@@ -130,11 +130,14 @@ class SettingsActivity : Activity(), RemoteLink.Observer {
     // ---- the link ----
 
     override fun onState(state: RemoteLink.State) {
+        // Another computer was chosen (or none): what was loaded was the other computer's.
+        val switched = state.desktop?.id != link.desktop?.id
         link = state
-        if (state.desktop == null) {
+        if (state.desktop == null || switched) {
             settings = null
             loading = false
         }
+        if (switched) showPointer(null)
         // Each (re)connection reads the settings again: they may have changed on the computer.
         if (state.connected && !wasConnected) load()
         if (!state.connected) loading = false
@@ -178,7 +181,7 @@ class SettingsActivity : Activity(), RemoteLink.Observer {
         val d = link.desktop
         val s = settings
         computerLine.text = when (SettingsModel.computerLine(d != null, link.connected, loading, s)) {
-            ComputerLine.NOT_PAIRED -> getString(R.string.settings_not_paired)
+            ComputerLine.NOT_PAIRED -> getString(if (link.desktops.isEmpty()) R.string.settings_not_paired else R.string.settings_not_chosen)
             ComputerLine.NOT_CONNECTED -> getString(R.string.settings_not_connected, d?.name ?: "")
             ComputerLine.LOADING -> getString(R.string.settings_loading)
             ComputerLine.LOADED -> {
